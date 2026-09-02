@@ -998,7 +998,7 @@ tr:last-child td{ border-bottom:none; }
       addForm = '<div class="card add-form"><h3 style="margin-bottom:14px;">Nouveau stagiaire — '+esc(formation)+'</h3>' + infosFormFields({
         prenom:'',nom:'',telephone:'',email:'',structureNom:'',structureAdresse:'',tuteurNom:'',tuteurTelephone:'',tuteurEmail:'',
         identifiantStagiaire:'',motDePasseStagiaire:''
-      }, 'add-') +
+      }, 'add-', true) +
       '<div style="display:flex; gap:10px; margin-top:6px;"><button type="button" class="btn btn-primary" data-action="submit-add-stagiaire" data-formation="'+esc(formation)+'">Ajouter ce stagiaire</button><button type="button" class="btn" data-action="toggle-add-form">Annuler</button></div></div>';
     }
     return '' +
@@ -1021,11 +1021,20 @@ tr:last-child td{ border-bottom:none; }
       '<p class="hint-banner" style="margin-top:8px;">Si le bouton e-mail ne fonctionne pas (aucune messagerie configurée sur cet ordinateur), utilisez « Copier le message » puis collez-le dans un e-mail, un SMS ou une messagerie de votre choix.</p>';
   }
 
-  function infosFormFields(v, prefix){
+  function infosFormFields(v, prefix, isNew){
     function f(id,label,val,type){
       type = type||'text';
       return '<div class="field"><label for="'+prefix+id+'">'+label+'</label><input id="'+prefix+id+'" type="'+type+'" value="'+esc(val)+'" /></div>';
     }
+    var accessSection = isNew
+      ? ('<p class="hint-banner">Un mot de passe provisoire sera généré automatiquement à la création. Le/la stagiaire choisira lui/elle-même son mot de passe définitif dès sa première connexion.</p>' +
+         '<div class="form-grid">' + f('identifiantStagiaire','Identifiant stagiaire (pseudo ou e-mail)',v.identifiantStagiaire) + '</div>')
+      : ('<p class="hint-banner">Le pseudo de connexion est généré automatiquement au format prenom.nom si vous laissez le champ vide. Le mot de passe n’est jamais affiché ici pour des raisons de sécurité : laissez ce champ vide pour ne pas le modifier, ou saisissez-en un nouveau pour le réinitialiser (le/la stagiaire devra alors en choisir un nouveau à sa prochaine connexion).</p>' +
+         '<div class="form-grid">' +
+           f('identifiantStagiaire','Identifiant stagiaire (pseudo ou e-mail)',v.identifiantStagiaire) + f('motDePasseStagiaire','Réinitialiser le mot de passe (laisser vide sinon)',v.motDePasseStagiaire) +
+         '</div>' +
+         (v.motDePasseDefiniStagiaire===false ? '<p class="hint-banner">Le/la stagiaire ne s’est pas encore connecté(e) pour la première fois : le mot de passe ci-dessus est provisoire, il/elle en choisira un nouveau à sa première connexion.</p>' : '') +
+         mailtoInviteHtml(v.email, v.prenom, v.identifiantStagiaire, v.motDePasseStagiaire, 'stagiaire'));
     return '<div class="form-grid">' +
       f('prenom','Prénom',v.prenom) + f('nom','Nom',v.nom) +
       f('telephone','Téléphone',v.telephone) + f('email','E-mail',v.email,'email') +
@@ -1034,12 +1043,7 @@ tr:last-child td{ border-bottom:none; }
       f('tuteurEmail','E-mail tuteur',v.tuteurEmail,'email') +
     '</div>' +
     '<h4 style="font-size:0.9rem;margin:18px 0 10px;">Accès stagiaire</h4>' +
-    '<p class="hint-banner">Le pseudo de connexion est généré automatiquement au format prenom.nom si vous laissez le champ vide. Le mot de passe n’est jamais affiché ici pour des raisons de sécurité : laissez ce champ vide pour ne pas le modifier (fiche existante), ou saisissez-en un nouveau pour le définir/le changer. À la création, si vous le laissez vide, un mot de passe provisoire est généré automatiquement.</p>' +
-    '<div class="form-grid">' +
-      f('identifiantStagiaire','Identifiant stagiaire (pseudo ou e-mail)',v.identifiantStagiaire) + f('motDePasseStagiaire','Mot de passe stagiaire',v.motDePasseStagiaire) +
-    '</div>' +
-    (v.motDePasseDefiniStagiaire===false ? '<p class="hint-banner">Le/la stagiaire ne s’est pas encore connecté(e) pour la première fois : le mot de passe ci-dessus est provisoire, il/elle en choisira un nouveau à sa première connexion.</p>' : '') +
-    mailtoInviteHtml(v.email, v.prenom, v.identifiantStagiaire, v.motDePasseStagiaire, 'stagiaire') +
+    accessSection +
     '<h4 style="font-size:0.9rem;margin:18px 0 10px;">Accès tuteur</h4>' +
     tuteurAccessHint(v);
   }
