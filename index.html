@@ -295,7 +295,7 @@ tr:last-child td{ border-bottom:none; }
     ['implicationDeveloppement2',"Votre implication dans le développement"],
     ['implicationFormation',"Votre implication sur la formation"]
   ];
-  var UC_BLOCKS = [
+  var UC_BLOCKS_DEFAULT = [
     { titre:"UC1 : Être capable d'encadrer tout public dans tout lieu et toute structure", items:[
       ['c11',"C1.1 EC de communiquer dans les situations de la vie professionnelle en adaptant la démarche et les outils aux singularités des interlocuteurs."],
       ['c12',"C1.2 EC de prendre en compte les caractéristiques des publics dans leurs environnements dans une démarche d'éducation à la citoyenneté en favorisant la dimension collective et l'intégration de tous."],
@@ -317,6 +317,83 @@ tr:last-child td{ border-bottom:none; }
       ['c43',"C4.3 EC de garantir les conditions de pratique en sécurité tout en impliquant les pratiquants dans la gestion de leur propre sécurité."]
     ]}
   ];
+  var UC_BLOCKS_BPJEPS_AF = [
+    { titre:"UC1 : Être capable d'encadrer tout public dans tout lieu et toute structure", items:[
+      ['af11',"C1.1 EC de Communiquer dans les situations de la vie professionnelle en adaptant la démarche et les outils aux singularité des interlocuteurs."],
+      ['af12',"C1.2 EC de prendre en compte les caractéristiques des publics dans leurs environnements dans une démarche d'éducation à la citoyenneté en favorisant la dimension collective et l'intégration de tous."],
+      ['af13',"C1.3 EC de contribuer au fonctionnement d'une structure en tenant compte des particularités de publics impliqués."]
+    ]},
+    { titre:"UC2 : Être capable de mettre en œuvre un projet d'animation s'inscrivant dans le projet de la structure d'une organisation du secteur", items:[
+      ['af21',"C2.1 EC de concevoir un projet d'animation en tenant compte des particularités des publics impliqués."],
+      ['af22',"C2.2 EC de conduire un projet d'animation dans une perspective éducative et intégrative."],
+      ['af23',"C2.3 EC d'évaluer un projet d'animation."]
+    ]},
+    { titre:"UC3 : Être Capable de conduire une séance, un cycle d'animation ou d'apprentissage dans le champ des activités de la forme", items:[
+      ['af31',"C3.1 EC de concevoir la séance, le cycle d'animation ou d'apprentissage dans le champ des activités de la forme."],
+      ['af32',"C3.2 EC de conduire la séance, le cycle d'animation ou d'apprentissage dans le champ des activités de la forme."],
+      ['af33',"C3.3 EC d'évaluer la séance, le cycle d'animation ou d'apprentissage dans le champ des activités de la forme."]
+    ]},
+    { titre:"UC4 : Être Capable de mobiliser les techniques de la mention des activités de la forme pour mettre en œuvre une séance ou un cycle d'apprentissage dans l'option « haltérophilie, musculation »", items:[
+      ['af41',"C4.1 EC de conduire une séance ou un cycle en utilisant les techniques de l'option haltérophilie, musculation."],
+      ['af42',"C4.2 EC de maîtriser et faire appliquer les règlements de l'option haltérophilie musculation afin que chaque sportif évolue en sécurité."],
+      ['af43',"C4.3 EC de garantir des conditions de pratique en sécurité tout en impliquant les pratiquants dans la gestion de leur propre sécurité."]
+    ]}
+  ];
+  var UC_BLOCKS_DEJEPS = [
+    { titre:"UC1 : Être capable de concevoir un projet d'action", items:[
+      ['dj11',"C1.1 EC d'analyser les enjeux du contexte socioprofessionnel en tenant compte des particularités des publics impliqués."],
+      ['dj12',"C1.2 EC de formaliser les éléments d'un projet d'action en lien avec les caractéristiques physiques, motrices, sensorielles, cognitives et psychiques des publics impliqués."],
+      ['dj13',"C1.3 EC de définir les moyens nécessaires à la mise en œuvre d'un projet d'action en prenant en compte les spécificités physiques, motrices, sensorielles, cognitives et psychiques des publics impliqués."]
+    ]},
+    { titre:"UC2 : Être capable de coordonner la mise en œuvre d'un projet d'action", items:[
+      ['dj21',"C2.1 EC d'animer une équipe de travail en favorisant la dimension collective et l'intégration de tous."],
+      ['dj22',"C2.2 EC de promouvoir les actions programmées en adaptant les modalités de communication aux singularités de son interlocuteur."],
+      ['dj23',"C2.3 EC de gérer la logistique des programmes d'action."],
+      ['dj24',"C2.4 EC d'animer la démarche qualité."]
+    ]},
+    { titre:"UC3 : Être Capable de conduire une démarche de perfectionnement sportif en Judo-Jujitsu", items:[
+      ['dj31',"C3.1 EC de conduire une démarche d'enseignement en judo-jujitsu en prenant en compte les particularités physiques, motrices, sensorielles, cognitives et psychiques de tous les pratiquants."],
+      ['dj32',"C3.2 EC de conduire une démarche d'entraînement en judo-jujitsu à partir des caractéristiques singulières adaptées aux objectifs de perfectionnement sportif des pratiquants."],
+      ['dj33',"C3.3 EC de conduire des actions de formation en judo-jujitsu en prenant en compte les singularités physiques, motrices, sensorielles, cognitives et psychiques des pratiquants."]
+    ]},
+    { titre:"UC4 : Encadrer le judo-jujitsu en sécurité", items:[
+      ['dj41',"C4.1 EC de réaliser en sécurité les démonstrations techniques en judo-jujitsu."],
+      ['dj42',"C4.2 EC d'adapter sa posture pédagogique et les démarches d'intervention afin que chaque sportif évolue en sécurité."],
+      ['dj43',"C4.3 EC de réaliser les gestes professionnels nécessaires à la sécurité des pratiquants en judo-jujitsu en prenant en compte leurs caractéristiques singulières physiques, motrices, sensorielles, cognitives et psychiques."],
+      ['dj44',"C4.4 EC d'assurer la sécurité des pratiquants et des tiers en judo-jujitsu tout en impliquant les pratiquants dans la gestion de leur propre sécurité et de celle des tiers."]
+    ]}
+  ];
+  var UC_BLOCKS_DESJEPS_PERF = [
+    { titre:"UC1 : Être capable de construire la stratégie d'une organisation du secteur", items:[
+      ['dp11',"C1.1 EC de préparer la prise de décision en prenant en compte les caractéristiques et besoins singuliers des publics."],
+      ['dp12',"C1.2 EC d'élaborer un projet de développement en lien avec les spécificités des publics impliqués."],
+      ['dp13',"C1.3 EC de mobiliser les instances dirigeantes en tenant compte des particularités des interlocuteurs impliqués."]
+    ]},
+    { titre:"UC2 : Être capable de gérer les ressources humaines et financières d'une organisation du secteur", items:[
+      ['dp21',"C2.1 EC de gérer les ressources humaines du secteur en favorisant la dimension collective et l'intégration de tous afin de répondre aux caractéristiques et besoins singuliers des publics."],
+      ['dp22',"C2.2 EC de gérer les ressources financières d'une organisation du secteur."],
+      ['dp23',"C2.3 EC de rendre compte de la mise en œuvre de la délégation en adaptant les modalités de communication, les objectifs, les moyens et les outils aux singularités de chacun."]
+    ]},
+    { titre:"UC3 : Être Capable de diriger un système d'entraînement en judo-jujitsu", items:[
+      ['dp31',"C3.1 EC de concevoir le plan de performance sportive en judo-jujitsu en prenant en compte les caractéristiques singulières des différents publics notamment ceux en situation de handicap."],
+      ['dp32',"C3.2 EC de planifier la préparation de la performance sportive en judo-jujitsu à partir des caractéristiques spécifiques et des objectifs des pratiquants."],
+      ['dp33',"C3.3 EC d'accompagner l'athlète vers l'optimisation de la performance en judo-jujitsu en tenant compte de ses caractéristiques singulières."],
+      ['dp34',"C3.4 EC de conduire l'évaluation du projet de la performance en judo-jujitsu adapté aux caractéristiques et besoins de chacun."],
+      ['dp35',"C3.5 EC d'organiser des actions formatives dans le cadre des réseaux professionnels en judo-jujitsu en prenant en compte les caractéristiques singulières et les besoins des publics impliqués."]
+    ]},
+    { titre:"UC4 : Être Capable d'encadrer le judo-jujitsu en sécurité", items:[
+      ['dp41',"C4.1 EC de réaliser en sécurité les démonstrations techniques en judo-jujitsu."],
+      ['dp42',"C4.2 EC d'adapter sa posture pédagogique et les démarches d'intervention afin que chaque sportif évolue en sécurité."],
+      ['dp43',"C4.3 EC de réaliser les gestes professionnels nécessaires à la sécurité des pratiquants en judo-jujitsu en prenant en compte leurs caractéristiques singulières physiques, motrices, sensorielles, cognitives et psychiques."],
+      ['dp44',"OI 4.3 EC d'assurer la sécurité des pratiquants et des tiers en judo-jujitsu tout en impliquant les pratiquants dans la gestion de leur propre sécurité et de celle des tiers."]
+    ]}
+  ];
+  function ucBlocksForFormation(formation){
+    if(formation==='BPJEPS AF') return UC_BLOCKS_BPJEPS_AF;
+    if(formation==='DEJEPS IJ' || formation==='DEJEPS INSEP') return UC_BLOCKS_DEJEPS;
+    if(formation==='DESJEPS PERF IJ' || formation==='DESJEPS PERF INSEP') return UC_BLOCKS_DESJEPS_PERF;
+    return UC_BLOCKS_DEFAULT;
+  }
   var CRIT_LEVELS = [['','Non noté'],['0','0'],['1','1'],['2','2'],['3','3'],['4','4']];
   var UC_LEVELS = [['','Non évalué'],['debutant',"Débutant(e)"],['initie',"Initié(e)"],['debrouille',"Débrouillé(e)"],['confirme',"Confirmé(e)"],['expert',"Expert(e)"]];
 
@@ -529,7 +606,7 @@ tr:last-child td{ border-bottom:none; }
       blocks.push({type:'table', headers:['Critère','Note (0 à 4)'], colFractions:[0.78,0.22],
         rows: CRIT2.map(function(c){ return [c[1], d.criteres2[c[0]] || '—']; })});
       blocks.push({type:'h3', text:'Référentiel de compétences'});
-      UC_BLOCKS.forEach(function(b){
+      ucBlocksForFormation(st.formation).forEach(function(b){
         blocks.push({type:'p', label:b.titre});
         blocks.push({type:'table', headers:['Compétence','Niveau'], colFractions:[0.74,0.26],
           rows: b.items.map(function(it){ return [it[1], ucLevelLabel(d.uc[it[0]])]; })});
@@ -588,7 +665,7 @@ tr:last-child td{ border-bottom:none; }
 
   function emptyCritSet(list){ var o={}; list.forEach(function(c){ o[c[0]]=''; }); return o; }
   function emptyEvaluation(i){
-    var uc = {}; UC_BLOCKS.forEach(function(b){ b.items.forEach(function(it){ uc[it[0]]=''; }); });
+    var uc = {}; UC_BLOCKS_DEFAULT.forEach(function(b){ b.items.forEach(function(it){ uc[it[0]]=''; }); });
     return {
       periode:'Période '+(i+1), taches:[],
       competencesAcquisesStagiaire:'', difficultesStagiaire:'', remarquesStagiaire:'',
@@ -1192,7 +1269,7 @@ tr:last-child td{ border-bottom:none; }
     html += '<h4 class="suivi-subtitle">Grille complémentaire</h4>';
     html += critGrid(CRIT2, d.criteres2, 'c2', idx, editable);
     html += '<h4 class="suivi-subtitle">Référentiel de compétences</h4>';
-    html += UC_BLOCKS.map(function(b){ return ucBlockHtml(b, d.uc, idx, editable); }).join('');
+    html += ucBlocksForFormation(st.formation).map(function(b){ return ucBlockHtml(b, d.uc, idx, editable); }).join('');
     if(editable){
       html += '<button type="button" class="btn btn-primary" data-action="save-detail-stagiaire" data-id="'+esc(st.id)+'" data-idx="'+idx+'" style="margin-top:10px;">Enregistrer cette période</button>';
     }
@@ -1958,7 +2035,7 @@ tr:last-child td{ border-bottom:none; }
         d.remarquesStagiaire = getVal('d-'+pidxS+'-remarquesStagiaire');
         CRIT1.forEach(function(c){ d.criteres1[c[0]] = getVal('c1-'+pidxS+'-'+c[0]); });
         CRIT2.forEach(function(c){ d.criteres2[c[0]] = getVal('c2-'+pidxS+'-'+c[0]); });
-        UC_BLOCKS.forEach(function(b){ b.items.forEach(function(it){ d.uc[it[0]] = getVal('uc-'+pidxS+'-'+it[0]); }); });
+        ucBlocksForFormation(s.formation).forEach(function(b){ b.items.forEach(function(it){ d.uc[it[0]] = getVal('uc-'+pidxS+'-'+it[0]); }); });
       });
       return;
     }
