@@ -1,0 +1,2128 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Suivi Alternance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style id="app-style">
+:root{
+  --bg:#F5F6F8;
+  --surface:#FFFFFF;
+  --surface-alt:#ECEEF3;
+  --border:#DADFE7;
+  --text:#1D2433;
+  --text-muted:#5B6472;
+  --accent:#3D4E9E;
+  --accent-contrast:#FFFFFF;
+  --accent-soft:#E7E9F7;
+  --success:#2E7D5B;
+  --success-soft:#E3F3EA;
+  --warning:#B3690F;
+  --warning-soft:#FBEEDD;
+  --danger:#C0392B;
+  --danger-soft:#FBE7E4;
+  --neutral:#6B7280;
+  --neutral-soft:#EDEEF1;
+  --shadow: 0 1px 2px rgba(20,24,35,0.06), 0 4px 14px rgba(20,24,35,0.05);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#13161F;
+    --surface:#1B1F2A;
+    --surface-alt:#232838;
+    --border:#323847;
+    --text:#E7E9F0;
+    --text-muted:#9AA2B4;
+    --accent:#8B98E8;
+    --accent-contrast:#12162A;
+    --accent-soft:#2A2F52;
+    --success:#4FBE8B;
+    --success-soft:#1D3A2C;
+    --warning:#E0A233;
+    --warning-soft:#3C2E12;
+    --danger:#E58579;
+    --danger-soft:#3B2220;
+    --neutral:#9AA2B4;
+    --neutral-soft:#262B3A;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#13161F;
+  --surface:#1B1F2A;
+  --surface-alt:#232838;
+  --border:#323847;
+  --text:#E7E9F0;
+  --text-muted:#9AA2B4;
+  --accent:#8B98E8;
+  --accent-contrast:#12162A;
+  --accent-soft:#2A2F52;
+  --success:#4FBE8B;
+  --success-soft:#1D3A2C;
+  --warning:#E0A233;
+  --warning-soft:#3C2E12;
+  --danger:#E58579;
+  --danger-soft:#3B2220;
+  --neutral:#9AA2B4;
+  --neutral-soft:#262B3A;
+  --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+}
+*{ box-sizing:border-box; }
+html,body{ margin:0; padding:0; }
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{ font-family:'Fraunces',Georgia,serif; font-weight:600; text-wrap:balance; margin:0; }
+button{ font-family:inherit; }
+a{ color:var(--accent); }
+code{ font-family:ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace; background:var(--surface-alt); padding:1px 6px; border-radius:5px; font-size:0.85em; }
+input,select,textarea{
+  font-family:inherit; font-size:0.92rem; color:var(--text); background:var(--surface);
+  border:1px solid var(--border); border-radius:8px; padding:8px 10px; width:100%;
+}
+input:focus,select:focus,textarea:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+textarea{ resize:vertical; min-height:64px; }
+label{ display:block; font-size:0.78rem; color:var(--text-muted); margin-bottom:4px; font-weight:500; }
+.field{ margin-bottom:14px; }
+.form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px 16px; }
+@media (max-width:640px){ .form-grid{ grid-template-columns:1fr; } }
+.btn{
+  display:inline-flex; align-items:center; gap:6px; border:1px solid var(--border);
+  background:var(--surface); color:var(--text); padding:9px 16px; border-radius:8px;
+  font-size:0.88rem; font-weight:600; cursor:pointer;
+}
+.btn:hover{ border-color:var(--accent); }
+.btn-primary{ background:var(--accent); color:var(--accent-contrast); border-color:var(--accent); }
+.btn-primary:hover{ opacity:0.92; }
+.btn-ghost{ background:transparent; border-color:transparent; color:var(--accent); padding:6px 8px; }
+.btn-sm{ padding:5px 10px; font-size:0.78rem; }
+.topbar{
+  position:sticky; top:0; z-index:10; display:flex; align-items:center; justify-content:space-between;
+  gap:12px; padding:14px 24px; background:var(--surface); border-bottom:1px solid var(--border); flex-wrap:wrap;
+}
+.brand{ display:flex; align-items:center; gap:10px; }
+.brand .mark{
+  width:34px; height:34px; border-radius:9px; background:var(--accent); color:var(--accent-contrast);
+  display:flex; align-items:center; justify-content:center; font-family:'Fraunces',Georgia,serif;
+  font-weight:700; font-size:0.92rem; letter-spacing:0.02em; flex-shrink:0;
+}
+.brand h1{ font-size:1.15rem; }
+.brand .sub{ font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; }
+.topbar-right{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+.actor{ text-align:right; font-size:0.82rem; }
+.actor .name{ font-weight:600; }
+.actor .role{ color:var(--text-muted); font-size:0.74rem; }
+.sync-dot{ display:inline-flex; align-items:center; gap:6px; font-size:0.74rem; color:var(--text-muted); }
+.sync-dot .d{ width:7px; height:7px; border-radius:50%; background:var(--neutral); }
+.sync-dot.shared .d{ background:var(--success); }
+.sync-dot.local .d{ background:var(--warning); }
+.layout{ max-width:1080px; margin:0 auto; padding:26px 20px 60px; }
+.hint-banner{
+  background:var(--accent-soft); border:1px solid var(--border); border-radius:10px; padding:12px 16px;
+  font-size:0.82rem; color:var(--text); margin-bottom:20px;
+}
+.stats-row{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+@media (max-width:640px){ .stats-row{ grid-template-columns:1fr; } }
+.stat-card{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; box-shadow:var(--shadow); }
+.stat-card .num{ font-family:'Fraunces',serif; font-size:1.9rem; font-weight:600; font-variant-numeric:tabular-nums; }
+.stat-card .lbl{ font-size:0.74rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); margin-top:2px; }
+.stat-card.warn .num{ color:var(--danger); }
+.priority-box{ background:var(--danger-soft); border:1px solid var(--danger); border-radius:10px; padding:14px 16px; margin-bottom:20px; }
+.priority-box h3{ font-size:0.95rem; color:var(--danger); margin-bottom:8px; }
+.priority-box ul{ margin:0; padding-left:18px; font-size:0.86rem; }
+.priority-box li{ margin-bottom:4px; }
+.section-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:10px; }
+.table-wrap{ overflow-x:auto; border:1px solid var(--border); border-radius:12px; background:var(--surface); box-shadow:var(--shadow); margin-bottom:16px; }
+table{ width:100%; border-collapse:collapse; font-size:0.88rem; }
+th,td{ text-align:left; padding:11px 14px; border-bottom:1px solid var(--border); }
+th{ font-size:0.72rem; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); background:var(--surface-alt); white-space:nowrap; }
+tr:last-child td{ border-bottom:none; }
+.row-click{ cursor:pointer; }
+.row-click:hover{ background:var(--surface-alt); }
+.pill{ display:inline-flex; align-items:center; padding:3px 10px; border-radius:999px; font-size:0.74rem; font-weight:600; white-space:nowrap; }
+.pill-success{ background:var(--success-soft); color:var(--success); }
+.pill-warning{ background:var(--warning-soft); color:var(--warning); }
+.pill-danger{ background:var(--danger-soft); color:var(--danger); }
+.pill-neutral{ background:var(--neutral-soft); color:var(--neutral); }
+.contact-links{ display:flex; gap:12px; font-size:0.82rem; }
+.contact-links a{ text-decoration:underline; text-underline-offset:2px; }
+.card{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; box-shadow:var(--shadow); }
+.fiche-header{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:6px; flex-wrap:wrap; }
+.fiche-header h2{ font-size:1.4rem; }
+.fiche-header .meta{ color:var(--text-muted); font-size:0.86rem; margin-top:3px; }
+.move-formation{ display:flex; gap:8px; align-items:center; max-width:380px; margin:10px 0 20px; }
+.move-formation select{ flex:1; }
+.tabs{ display:flex; gap:4px; margin-bottom:18px; flex-wrap:wrap; border-bottom:1px solid var(--border); }
+.tab-btn{ background:transparent; border:none; padding:10px 14px; font-size:0.86rem; font-weight:600; color:var(--text-muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; }
+.tab-btn.active{ color:var(--accent); border-bottom-color:var(--accent); }
+.tab-btn:hover{ color:var(--text); }
+.tab-btn.small{ padding:6px 10px; font-size:0.78rem; }
+.readonly-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px 24px; }
+@media (max-width:640px){ .readonly-grid{ grid-template-columns:1fr; } }
+.ro-item .k{ font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); margin-bottom:2px; }
+.ro-item .v{ font-size:0.92rem; }
+.formation-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+@media (max-width:760px){ .formation-grid{ grid-template-columns:1fr 1fr; } }
+@media (max-width:480px){ .formation-grid{ grid-template-columns:1fr; } }
+.formation-card{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; box-shadow:var(--shadow); cursor:pointer; }
+.formation-card:hover{ border-color:var(--accent); }
+.formation-card h3{ font-size:1rem; margin-bottom:6px; }
+.formation-card-meta{ font-size:0.82rem; color:var(--text-muted); }
+.suivi-section-title{ font-size:1.02rem; margin:0 0 14px; }
+.suivi-subtitle{ font-size:0.92rem; margin:22px 0 8px; color:var(--text); }
+.suivi-tab-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+.suivi-tab-head h3{ margin-bottom:0; }
+.rating-list{ border:1px solid var(--border); border-radius:12px; background:var(--surface); box-shadow:var(--shadow); margin-bottom:16px; }
+.rating-head{ display:flex; align-items:center; justify-content:space-between; gap:14px; padding:9px 14px; background:var(--surface-alt); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.02em; color:var(--text-muted); font-weight:600; border-bottom:1px solid var(--border); border-radius:12px 12px 0 0; }
+.rating-head span:last-child{ width:170px; flex-shrink:0; text-align:left; }
+.rating-row{ display:flex; align-items:center; justify-content:space-between; gap:14px; padding:10px 14px; border-bottom:1px solid var(--border); }
+.rating-row:last-child{ border-bottom:none; }
+.rating-row .crit-label{ flex:1; font-size:0.88rem; }
+.rating-row select{ width:170px; flex-shrink:0; }
+.rating-row .rating-value{ width:170px; flex-shrink:0; font-size:0.88rem; color:var(--text-muted); }
+@media (max-width:560px){
+  .rating-row{ flex-direction:column; align-items:stretch; }
+  .rating-row select, .rating-row .rating-value{ width:100%; }
+  .rating-head span:last-child{ width:auto; }
+}
+.rating-list-wide{ border:1px solid var(--border); border-radius:12px; background:var(--surface); box-shadow:var(--shadow); margin-bottom:16px; }
+.rating-head-wide{ display:flex; gap:14px; padding:9px 14px; background:var(--surface-alt); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.02em; color:var(--text-muted); font-weight:600; border-bottom:1px solid var(--border); border-radius:12px 12px 0 0; }
+.rating-head-wide span:first-child{ flex:0 0 220px; }
+.rating-head-wide span{ flex:1; }
+.rating-row-wide{ display:flex; gap:14px; padding:10px 14px; border-bottom:1px solid var(--border); align-items:flex-start; }
+.rating-row-wide:last-child{ border-bottom:none; }
+.rating-row-wide .crit-label{ flex:0 0 220px; font-size:0.88rem; padding-top:8px; }
+.rating-row-wide textarea{ flex:1; min-width:0; font-family:inherit; font-size:0.85rem; resize:vertical; }
+@media (max-width:720px){
+  .rating-row-wide{ flex-direction:column; }
+  .rating-row-wide .crit-label{ flex:none; padding-top:0; }
+  .rating-head-wide span:first-child{ flex:1; }
+}
+.period-card{ border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:10px; padding:16px 18px; margin-bottom:16px; background:var(--surface); }
+.period-card h3{ font-size:1rem; margin-bottom:12px; }
+.period-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px 16px; }
+@media (max-width:640px){ .period-grid{ grid-template-columns:1fr; } }
+.period-grid .full{ grid-column:1/-1; }
+.ro-text{ white-space:pre-wrap; font-size:0.9rem; }
+.note-interne{ background:var(--warning-soft); border:1px dashed var(--warning); border-radius:8px; padding:10px 12px; margin-top:10px; }
+.note-interne label{ color:var(--warning); }
+.planning-block{ margin-bottom:24px; }
+.planning-block h3{ font-size:1rem; margin-bottom:10px; }
+.doc-row{ display:flex; gap:10px; align-items:flex-end; margin-bottom:10px; flex-wrap:wrap; }
+.doc-row .grow{ flex:1 1 160px; }
+.doc-list{ list-style:none; margin:0; padding:0; }
+.doc-list li{ display:flex; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); font-size:0.88rem; }
+.doc-list li:last-child{ border-bottom:none; }
+.doc-meta{ color:var(--text-muted); font-size:0.78rem; }
+.messages-thread{ display:flex; flex-direction:column; gap:10px; margin-bottom:18px; max-height:420px; overflow-y:auto; padding-right:4px; }
+.msg{ max-width:78%; padding:10px 13px; border-radius:12px; background:var(--surface-alt); }
+.msg.mine{ align-self:flex-end; background:var(--accent-soft); }
+.msg .meta{ font-size:0.72rem; color:var(--text-muted); margin-bottom:3px; font-weight:600; }
+.msg .txt{ white-space:pre-wrap; font-size:0.9rem; }
+.msg-empty{ color:var(--text-muted); font-size:0.86rem; padding:8px 0; }
+.msg-compose{ display:flex; gap:10px; align-items:flex-end; }
+.msg-compose textarea{ min-height:52px; }
+.login-wrap{ max-width:460px; margin:0 auto; padding:60px 20px; }
+.login-title{ text-align:center; margin-bottom:8px; font-size:2rem; }
+.login-sub{ text-align:center; color:var(--text-muted); margin-bottom:36px; font-size:0.94rem; }
+.login-card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:24px; box-shadow:var(--shadow); }
+.login-card h3{ font-size:1.02rem; margin-bottom:16px; }
+.account-panel{ border-bottom:1px solid var(--border); background:var(--surface-alt); }
+.account-panel-inner{ max-width:640px; margin:0 auto; padding:18px 24px; }
+.add-form{ margin-top:16px; }
+.toast{
+  position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(12px);
+  background:var(--text); color:var(--bg); padding:11px 18px; border-radius:10px; font-size:0.85rem;
+  opacity:0; pointer-events:none; transition:opacity 0.25s ease, transform 0.25s ease; box-shadow:var(--shadow); z-index:50; max-width:90vw;
+}
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+.empty-state{ text-align:center; padding:50px 20px; color:var(--text-muted); }
+.print-area{ display:none; }
+.print-area h1{ font-size:1.3rem; margin-bottom:10px; color:#000; }
+.print-area h2{ font-size:1.05rem; margin:18px 0 6px; color:#000; }
+.print-area h3{ font-size:0.92rem; margin:14px 0 6px; color:#000; }
+.print-area .meta-line{ font-size:0.85rem; color:#111; margin-bottom:2px; }
+.print-area .p-label{ font-weight:600; font-size:0.85rem; color:#000; margin:6px 0 2px; }
+.print-area p{ font-size:0.85rem; color:#111; white-space:pre-wrap; margin:0 0 8px; }
+.print-area table{ width:100%; border-collapse:collapse; margin-bottom:12px; font-size:0.78rem; }
+.print-area th,.print-area td{ border:1px solid #999; padding:5px 7px; text-align:left; vertical-align:top; color:#111; }
+.print-area th{ background:#eee; }
+@media print{
+  body > *:not(.print-area){ display:none !important; }
+  .print-area{ display:block !important; }
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="toast" class="toast"></div>
+<div id="print-area" class="print-area"></div>
+<script id="app-script">
+(function(){
+  var SUPABASE_URL = 'https://bfmkinqqesrvxuzrdfye.supabase.co';
+  var SUPABASE_KEY = 'sb_publishable_kMhg82Vpgn4h72cqkMh6Mw_sMN8IC8m';
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  var JOURS = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+  var FORMATIONS = ['BPJEPS FOAD','BPJEPS IJ','BPJEPS AF','BPJEPS INSEP','DEJEPS IJ','DEJEPS INSEP','DESJEPS PERF IJ','DESJEPS PERF INSEP','DESJEPS ASEC DSP'];
+  var FICHE_TABS = [['infos','Mes infos'],['suivi-stagiaire','Mon suivi stagiaire'],['suivi-tuteur','Suivi tuteur'],['planning','Mon planning'],['documents','Mes documents'],['messages','Messagerie'],['referent-contact','Référent suivi pédagogique']];
+  var VIEW_KEY = 'dojoSuiviView_v3';
+
+  var CRIT1 = [
+    ['integrationStructure','Intégration dans la structure'],
+    ['assiduite','Assiduité'],
+    ['ponctualite','Ponctualité'],
+    ['relationTuteur','Relation avec le tuteur'],
+    ['respectEcoute',"Respect des autres - Écoute"],
+    ['implicationCollectif','Implication dans le travail collectif'],
+    ['implicationDeveloppement','Implication dans le développement'],
+    ['implicationPratiques','Implication dans les phases pratiques'],
+    ['implicationTheoriques','Implication dans les phases théoriques'],
+    ['sensResponsabilites',"Sens des responsabilités"],
+    ['sensInitiative',"Sens de l'initiative"]
+  ];
+  var CRIT2 = [
+    ['integrationStructure2','Intégration dans la structure'],
+    ['relationTuteur2','Relation avec le tuteur'],
+    ['relationElus','Relation avec les élus'],
+    ['implicationDeveloppement2',"Votre implication dans le développement"],
+    ['implicationFormation',"Votre implication sur la formation"]
+  ];
+  var UC_BLOCKS = [
+    { titre:"UC1 : Être capable d'encadrer tout public dans tout lieu et toute structure", items:[
+      ['c11',"C1.1 EC de communiquer dans les situations de la vie professionnelle en adaptant la démarche et les outils aux singularités des interlocuteurs."],
+      ['c12',"C1.2 EC de prendre en compte les caractéristiques des publics dans leurs environnements dans une démarche d'éducation à la citoyenneté en favorisant la dimension collective et l'intégration de tous."],
+      ['c13',"C1.3 EC de contribuer au fonctionnement d'une structure en tenant compte des particularités de publics impliqués."]
+    ]},
+    { titre:"UC2 : Être capable de mettre en œuvre un projet d'animation s'inscrivant dans le projet de la structure d'une organisation du secteur", items:[
+      ['c21',"C2.1 EC de concevoir un projet d'animation en tenant compte des particularités des publics impliqués."],
+      ['c22',"C2.2 EC de conduire un projet d'animation dans une perspective éducative et intégrative."],
+      ['c23',"C2.3 EC d'évaluer un projet d'animation."]
+    ]},
+    { titre:"UC3 : Être capable de conduire une séance, un cycle d'animation ou d'apprentissage dans le champ du judo-jujitsu", items:[
+      ['c31',"C3.1 EC de concevoir la séance, le cycle d'animation ou d'apprentissage en prenant en compte les caractéristiques physiques, motrices, sensorielles, cognitives et psychiques de tous les pratiquants."],
+      ['c32',"C3.2 EC de conduire la séance, le cycle d'animation ou d'apprentissage à partir des particularités des publics impliqués."],
+      ['c33',"C3.3 EC d'évaluer la séance, le cycle d'animation ou d'apprentissage notamment au regard de la prise en compte des caractéristiques spécifiques et des besoins de chacun."]
+    ]},
+    { titre:"UC4 : Être capable de mobiliser les techniques de la mention pour mettre en œuvre une séance, un cycle d'animation ou d'apprentissage", items:[
+      ['c41',"C4.1 EC de conduire une séance ou un cycle en utilisant les techniques de la mention en lien avec les singularités des pratiquants."],
+      ['c42',"C4.2 EC de maîtriser et faire appliquer les règlements de la mention afin que chaque sportif évolue en sécurité."],
+      ['c43',"C4.3 EC de garantir les conditions de pratique en sécurité tout en impliquant les pratiquants dans la gestion de leur propre sécurité."]
+    ]}
+  ];
+  var CRIT_LEVELS = [['','Non noté'],['0','0'],['1','1'],['2','2'],['3','3'],['4','4']];
+  var UC_LEVELS = [['','Non évalué'],['debutant',"Débutant(e)"],['initie',"Initié(e)"],['debrouille',"Débrouillé(e)"],['confirme',"Confirmé(e)"],['expert',"Expert(e)"]];
+
+  var DATA = { comptes: [], stagiaires: [] };
+  var syncStatus = 'checking';
+  var docEditBuffer = null;
+  var tasksEditBuffer = null;
+  var view = loadView();
+
+  function loadView(){
+    try{
+      var raw = sessionStorage.getItem(VIEW_KEY);
+      if(raw){ return JSON.parse(raw); }
+    }catch(e){}
+    return { screen:'login', role:null, profileId:null, selectedFormation:null, selectedId:null, tab:'infos', showAdd:false, detailPeriod:0 };
+  }
+  function saveView(){
+    try{ sessionStorage.setItem(VIEW_KEY, JSON.stringify(view)); }catch(e){}
+  }
+
+  function esc(s){
+    return String(s===null||s===undefined?'':s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+  function fmtDate(iso){
+    if(!iso) return '—';
+    var p = iso.split('-');
+    if(p.length!==3) return esc(iso);
+    return p[2]+'/'+p[1]+'/'+p[0];
+  }
+  function fmtDateTime(iso){
+    if(!iso) return '';
+    var d = new Date(iso);
+    if(isNaN(d.getTime())) return esc(iso);
+    var dd = String(d.getDate()).padStart(2,'0');
+    var mm = String(d.getMonth()+1).padStart(2,'0');
+    var hh = String(d.getHours()).padStart(2,'0');
+    var mi = String(d.getMinutes()).padStart(2,'0');
+    return dd+'/'+mm+'/'+d.getFullYear()+' à '+hh+':'+mi;
+  }
+  function riskLabel(r){
+    return r==='eleve' ? 'Risque élevé' : r==='moyen' ? 'Risque moyen' : r==='faible' ? 'Risque faible' : 'Non renseigné';
+  }
+  function riskClass(r){
+    return r==='eleve' ? 'pill-danger' : r==='moyen' ? 'pill-warning' : r==='faible' ? 'pill-success' : 'pill-neutral';
+  }
+  function ucLevelLabel(v){ for(var i=0;i<UC_LEVELS.length;i++){ if(UC_LEVELS[i][0]===v) return UC_LEVELS[i][1]; } return 'Non évalué'; }
+  function fullName(st){ return st.prenom+' '+st.nom; }
+  // ---------- Supabase : chargement des données ----------
+  function rowToStagiaire(row){
+    return {
+      id: row.id, prenom: row.prenom, nom: row.nom, formation: row.formation,
+      telephone: row.telephone, email: row.email,
+      structureNom: row.structure_nom, structureAdresse: row.structure_adresse,
+      tuteurNom: row.tuteur_nom, tuteurTelephone: row.tuteur_telephone, tuteurEmail: row.tuteur_email,
+      identifiantStagiaire: row.identifiant_stagiaire, motDePasseStagiaire: '',
+      motDePasseDefiniStagiaire: row.mot_de_passe_defini_stagiaire,
+      planningStructure: row.planning_structure || [], planningDojo: row.planning_dojo || [],
+      documents: row.documents || [], visites: row.visites || [], suivis: row.suivis || [],
+      evaluations: row.evaluations || [], messages: row.messages || []
+    };
+  }
+  function rowToCompte(row){
+    return {
+      id: row.id, pseudo: row.pseudo, email: row.email, role: row.role,
+      nomAffiche: row.nom_affiche, nom: row.nom, prenom: row.prenom, telephone: row.telephone,
+      motDePasseDefini: row.mot_de_passe_defini
+    };
+  }
+  function loadData(){
+    return Promise.all([
+      sb.from('stagiaires').select('*'),
+      sb.from('comptes').select('*')
+    ]).then(function(results){
+      var stagRes = results[0], compRes = results[1];
+      if(stagRes.error || compRes.error){
+        syncStatus = 'error';
+        console.error('Chargement impossible', stagRes.error || compRes.error);
+        return;
+      }
+      DATA.stagiaires = stagRes.data.map(rowToStagiaire);
+      DATA.comptes = compRes.data.map(rowToCompte);
+      syncStatus = 'shared';
+    }).catch(function(err){ syncStatus = 'error'; console.error(err); });
+  }
+
+  function findStagiaire(id){
+    for(var i=0;i<DATA.stagiaires.length;i++){ if(DATA.stagiaires[i].id===id) return DATA.stagiaires[i]; }
+    return null;
+  }
+  function findCompte(id){
+    var list = DATA.comptes || [];
+    for(var i=0;i<list.length;i++){ if(list[i].id===id) return list[i]; }
+    return null;
+  }
+  function findReferentCompte(){
+    var list = DATA.comptes || [];
+    for(var i=0;i<list.length;i++){ if(list[i].role==='referent') return list[i]; }
+    return null;
+  }
+  function lastFilledPeriod(st){
+    for(var i=st.suivis.length-1;i>=0;i--){ if(st.suivis[i].dateVisite || st.suivis[i].risque) return st.suivis[i]; }
+    return null;
+  }
+  // "En attente de réponse" : le dernier message du fil n'a pas été envoyé par le référent/coordinateur.
+  function hasUnreadMessages(st){
+    if(!st.messages || !st.messages.length) return false;
+    var last = st.messages[st.messages.length-1];
+    return last.role!=='referent' && last.role!=='coordinateur';
+  }
+  function stagiairesWithUnread(){
+    return DATA.stagiaires.filter(hasUnreadMessages);
+  }
+  function daysUntil(iso){
+    if(!iso) return Infinity;
+    var target = new Date(iso+'T00:00:00');
+    var now = new Date(); now.setHours(0,0,0,0);
+    return Math.round((target-now)/86400000);
+  }
+  function deepClone(o){ return JSON.parse(JSON.stringify(o)); }
+  function getVal(id){ var el = document.getElementById(id); return el ? el.value : ''; }
+  function newId(){ return 's_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+  function isFullAccess(){ return view.role==='referent' || view.role==='coordinateur'; }
+  function findCompteByEmail(email, role){
+    email = (email||'').trim().toLowerCase();
+    if(!email) return null;
+    var list = DATA.comptes || [];
+    for(var i=0;i<list.length;i++){ if(list[i].email && list[i].email.toLowerCase()===email && (!role || list[i].role===role)) return list[i]; }
+    return null;
+  }
+  // Retrouve tous les stagiaires rattachés à un compte tuteur, par correspondance
+  // sur l’adresse e-mail (rattachement automatique, aucun lien à saisir à la main).
+  function tuteurStagiaires(compteId){
+    var compte = findCompte(compteId);
+    if(!compte || !compte.email) return [];
+    var email = compte.email.toLowerCase();
+    return DATA.stagiaires.filter(function(s){ return s.tuteurEmail && s.tuteurEmail.toLowerCase()===email; });
+  }
+  // Crée ou met à jour automatiquement les comptes tuteurs à partir des adresses
+  // e-mail renseignées sur les fiches stagiaires : un tuteur qui encadre plusieurs
+  // stagiaires n’a besoin que d’un seul identifiant, retrouvé par son e-mail.
+  // Les comptes tuteur sont désormais créés/mis à jour/supprimés automatiquement
+  // côté base de données (trigger sync_tuteur_comptes), à partir de l'adresse
+  // e-mail du tuteur renseignée sur chaque fiche stagiaire.
+  function updateCompte(id, mutator){
+    var c = findCompte(id);
+    if(!c) return;
+    var clone = deepClone(c);
+    mutator(clone);
+    var idx = DATA.comptes.findIndex(function(x){ return x.id===id; });
+    if(idx>=0) DATA.comptes[idx] = clone;
+    render();
+    sb.rpc('rpc_update_compte', { p_id: id, p_patch: {
+      nom: clone.nom, prenom: clone.prenom, email: clone.email, telephone: clone.telephone, nomAffiche: clone.nomAffiche
+    }}).then(function(res){
+      if(res.error){ showToast('Enregistrement impossible : '+res.error.message); }
+    });
+  }
+
+  // ---------- pseudos prenom.nom ----------
+  function cleanNamePart(s){
+    return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  }
+  function pseudoFromName(prenom, nom){
+    var p = cleanNamePart(prenom), n = cleanNamePart(nom);
+    if(!p || !n) return '';
+    return p+'.'+n;
+  }
+  function pseudoFromFullName(full){
+    var parts = (full||'').trim().split(/\s+/);
+    if(parts.length<2) return '';
+    return pseudoFromName(parts[0], parts.slice(1).join(' '));
+  }
+
+  // ---------- export des feuilles de suivi (impression) ----------
+  function slugify(s){
+    return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'stagiaire';
+  }
+
+  // -- contenu structure des feuilles --
+  function buildStagiaireSheetBlocks(st){
+    var blocks = [];
+    blocks.push({type:'meta', text:'Stagiaire : '+fullName(st)});
+    blocks.push({type:'meta', text:'Formation : '+st.formation});
+    blocks.push({type:'meta', text:'Structure d’accueil : '+st.structureNom});
+    st.evaluations.forEach(function(d, idx){
+      var periodeLabel = (st.suivis[idx] && st.suivis[idx].periode) ? st.suivis[idx].periode : ('Période '+(idx+1));
+      blocks.push({type:'h2', text:periodeLabel});
+      blocks.push({type:'h3', text:'Types de tâches réalisées'});
+      if(d.taches && d.taches.length){
+        blocks.push({type:'table', headers:['Type de tâche','Volume horaire','Détails'], colFractions:[0.3,0.18,0.52],
+          rows: d.taches.map(function(t){ return [t.type||'—', t.volume||'—', t.details||'—']; })});
+      } else {
+        blocks.push({type:'p', text:'Aucune tâche renseignée.'});
+      }
+      blocks.push({type:'p', label:'Compétences acquises par le/la stagiaire :', text: d.competencesAcquisesStagiaire});
+      blocks.push({type:'p', label:'Difficultés rencontrées :', text: d.difficultesStagiaire});
+      blocks.push({type:'p', label:'Autres remarques :', text: d.remarquesStagiaire});
+      blocks.push({type:'h3', text:'Critères'});
+      blocks.push({type:'table', headers:['Critère','Note (0 à 4)'], colFractions:[0.78,0.22],
+        rows: CRIT1.map(function(c){ return [c[1], d.criteres1[c[0]] || '—']; })});
+      blocks.push({type:'h3', text:'Grille complémentaire'});
+      blocks.push({type:'table', headers:['Critère','Note (0 à 4)'], colFractions:[0.78,0.22],
+        rows: CRIT2.map(function(c){ return [c[1], d.criteres2[c[0]] || '—']; })});
+      blocks.push({type:'h3', text:'Référentiel de compétences'});
+      UC_BLOCKS.forEach(function(b){
+        blocks.push({type:'p', label:b.titre});
+        blocks.push({type:'table', headers:['Compétence','Niveau'], colFractions:[0.74,0.26],
+          rows: b.items.map(function(it){ return [it[1], ucLevelLabel(d.uc[it[0]])]; })});
+      });
+    });
+    return blocks;
+  }
+  function buildTuteurSheetBlocks(st){
+    var blocks = [];
+    blocks.push({type:'meta', text:'Stagiaire : '+fullName(st)});
+    blocks.push({type:'meta', text:'Tuteur : '+(st.tuteurNom||'—')});
+    blocks.push({type:'meta', text:'Structure d’accueil : '+st.structureNom});
+    st.evaluations.forEach(function(d, idx){
+      var periodeLabel = (st.suivis[idx] && st.suivis[idx].periode) ? st.suivis[idx].periode : ('Période '+(idx+1));
+      blocks.push({type:'h2', text:periodeLabel});
+      blocks.push({type:'p', label:'Compétences acquises (évaluation du tuteur) :', text: d.tuteurCompetencesAcquises});
+      blocks.push({type:'h3', text:'Critères'});
+      blocks.push({type:'table', headers:['Critère','Note (0 à 4)'], colFractions:[0.78,0.22],
+        rows: CRIT1.map(function(c){ return [c[1], d.criteres1[c[0]] || '—']; })});
+      blocks.push({type:'p', label:'Difficultés rencontrées par le tuteur :', text: d.tuteurDifficultes});
+      blocks.push({type:'p', label:'Autres remarques :', text: d.tuteurRemarques});
+    });
+    return blocks;
+  }
+
+  // -- aperçu imprimable (pas de téléchargement : la page reste partageable par lien) --
+  function blocksToPrintHtml(title, blocks){
+    var html = '<h1>'+esc(title)+'</h1>';
+    blocks.forEach(function(b){
+      if(b.type==='meta'){ html += '<div class="meta-line">'+esc(b.text)+'</div>'; }
+      else if(b.type==='h2'){ html += '<h2>'+esc(b.text)+'</h2>'; }
+      else if(b.type==='h3'){ html += '<h3>'+esc(b.text)+'</h3>'; }
+      else if(b.type==='p'){
+        if(b.label){ html += '<div class="p-label">'+esc(b.label)+'</div>'; }
+        if(b.text!==undefined){ html += '<p>'+esc(b.text||'—')+'</p>'; }
+      }
+      else if(b.type==='table'){
+        html += '<table><thead><tr>' + b.headers.map(function(h){ return '<th>'+esc(h)+'</th>'; }).join('') + '</tr></thead><tbody>' +
+          b.rows.map(function(r){ return '<tr>'+r.map(function(c){ return '<td>'+esc(c)+'</td>'; }).join('')+'</tr>'; }).join('') +
+        '</tbody></table>';
+      }
+    });
+    return html;
+  }
+
+  function printSheet(filenameBase, blocks, title){
+    var area = document.getElementById('print-area');
+    if(!area) return;
+    area.innerHTML = blocksToPrintHtml(title, blocks);
+    var prevTitle = document.title;
+    document.title = filenameBase;
+    try{ window.print(); }catch(e){}
+    document.title = prevTitle;
+    showToast('Utilisez Ctrl+P (ou Cmd+P) puis « Enregistrer en PDF » si la fenêtre d’impression ne s’est pas ouverte automatiquement.');
+  }
+
+  function emptyCritSet(list){ var o={}; list.forEach(function(c){ o[c[0]]=''; }); return o; }
+  function emptyEvaluation(i){
+    var uc = {}; UC_BLOCKS.forEach(function(b){ b.items.forEach(function(it){ uc[it[0]]=''; }); });
+    return {
+      periode:'Période '+(i+1), taches:[],
+      competencesAcquisesStagiaire:'', difficultesStagiaire:'', remarquesStagiaire:'',
+      tuteurCompetencesAcquises:'', criteres1: emptyCritSet(CRIT1),
+      tuteurDifficultes:'', tuteurRemarques:'', criteres2: emptyCritSet(CRIT2),
+      uc: uc
+    };
+  }
+  function emptyStagiaire(formation){
+    return {
+      id:newId(), prenom:'', nom:'', formation: formation || FORMATIONS[0],
+      telephone:'', email:'', structureNom:'', structureAdresse:'',
+      tuteurNom:'', tuteurTelephone:'', tuteurEmail:'',
+      identifiantStagiaire:'', motDePasseStagiaire:'', motDePasseDefiniStagiaire:true,
+      planningStructure: JOURS.map(function(j){ return {jour:j, horaires:'', activite:''}; }),
+      planningDojo: JOURS.map(function(j){ return {jour:j, horaires:'', module:''}; }),
+      documents: [],
+      visites: [],
+      suivis: [0,1,2].map(function(i){ return {periode:'Période '+(i+1), dateVisite:'', risque:'', prochaineVisite:'', noteInterne:''}; }),
+      evaluations: [0,1,2].map(emptyEvaluation),
+      messages: []
+    };
+  }
+
+  function actorInfo(){
+    if(view.role==='referent' || view.role==='coordinateur'){
+      var compte = findCompte(view.profileId);
+      return { auteur: compte?compte.nomAffiche:'Référent', roleKey: view.role, roleLabel: view.role==='coordinateur' ? 'Coordinateur formation' : 'Référent' };
+    }
+    if(view.role==='stagiaire'){ var st=findStagiaire(view.profileId); return {auteur: st?fullName(st):'Stagiaire', roleKey:'stagiaire', roleLabel:'Stagiaire'}; }
+    if(view.role==='tuteur'){ var tc=findCompte(view.profileId); return {auteur: tc?tc.nomAffiche:'Tuteur', roleKey:'tuteur', roleLabel:'Tuteur'}; }
+    return {auteur:'', roleKey:'', roleLabel:''};
+  }
+
+  // ---------- authentication (demo-level: credentials stored in plain text in this page) ----------
+  function tryLogin(identifiant, password){
+    identifiant = (identifiant||'').trim();
+    if(!identifiant || !password) return Promise.resolve(null);
+    return sb.rpc('rpc_login', { p_identifiant: identifiant, p_password: password }).then(function(res){
+      if(res.error || !res.data || res.data.status==='invalid') return null;
+      return res.data;
+    }).catch(function(){ return null; });
+  }
+  function doLogin(){
+    var idf = getVal('login-identifiant');
+    var pwd = getVal('login-motdepasse');
+    if(!idf || !pwd){ showToast('Merci de renseigner votre identifiant et votre mot de passe.'); return; }
+    tryLogin(idf, pwd).then(function(result){
+      if(!result){ showToast('Identifiant ou mot de passe incorrect.'); return; }
+      if(result.status==='needs-setup'){
+        view = { screen:'setup-password', role:result.role, profileId:result.profileId, selectedFormation:null, selectedId:null, tab:'infos', showAdd:false, detailPeriod:0 };
+        saveView(); render(); return;
+      }
+      view = { screen:'app', role:result.role, profileId:result.profileId, selectedFormation:null, selectedId:null, tab:'infos', showAdd:false, detailPeriod:0 };
+      saveView(); render();
+    });
+  }
+  function findAccountByEmail(email){
+    email = (email||'').trim();
+    if(!email) return Promise.resolve(null);
+    return sb.rpc('rpc_find_by_email', { p_email: email }).then(function(res){
+      if(res.error || !res.data) return null;
+      return res.data;
+    }).catch(function(){ return null; });
+  }
+  function applyPasswordReset(target, newPass){
+    return sb.rpc('rpc_set_password', { p_kind: target.kind, p_id: target.id, p_new_password: newPass }).then(function(res){
+      return !res.error && res.data===true;
+    }).catch(function(){ return false; });
+  }
+  function applyOwnPasswordChange(kind, id, currentPass, newPass){
+    return sb.rpc('rpc_set_password', { p_kind: kind, p_id: id, p_new_password: newPass, p_current_password: currentPass }).then(function(res){
+      return !res.error && res.data===true;
+    }).catch(function(){ return false; });
+  }
+
+  // ---------- persistence ----------
+  var STAGIAIRE_PATCH_FIELDS = ['prenom','nom','formation','telephone','email','structureNom','structureAdresse','tuteurNom','tuteurTelephone','tuteurEmail','identifiantStagiaire','planningStructure','planningDojo','documents','visites','suivis','evaluations','messages'];
+
+  function updateStagiaire(id, mutator){
+    var st = findStagiaire(id);
+    if(!st) return;
+    var clone = deepClone(st);
+    mutator(clone);
+    var idx = DATA.stagiaires.findIndex(function(x){ return x.id===id; });
+    if(idx>=0) DATA.stagiaires[idx] = clone;
+    saveView();
+    render();
+    var patch = {};
+    STAGIAIRE_PATCH_FIELDS.forEach(function(k){ patch[k] = clone[k]; });
+    sb.rpc('rpc_update_stagiaire', { p_id: id, p_patch: patch }).then(function(res){
+      if(res.error){ showToast('Enregistrement impossible : '+res.error.message); }
+    });
+  }
+
+  var toastTimer = null;
+  function showToast(msg){
+    var t = document.getElementById('toast');
+    if(!t) return;
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 4200);
+  }
+
+  // ---------- render ----------
+  function render(){
+    var root = document.getElementById('root');
+    var html;
+    if(view.screen==='login') html = renderLogin();
+    else if(view.screen==='setup-password') html = renderSetupPassword();
+    else html = renderApp();
+    root.innerHTML = html;
+  }
+
+  function renderLogin(){
+    if(view.forgotOpen){
+      var stage = view.forgotStage || 'email';
+      var body;
+      if(stage==='reset'){
+        body = '' +
+          '<h3>Nouveau mot de passe</h3>' +
+          '<p class="hint-banner">Dans une vraie plateforme, un e-mail avec un lien de réinitialisation vous serait envoyé. Dans cette démonstration, vous pouvez définir directement votre nouveau mot de passe ci-dessous.</p>' +
+          '<div class="field"><label for="forgot-new-pass">Nouveau mot de passe</label><input id="forgot-new-pass" type="password" autocomplete="new-password" /></div>' +
+          '<div class="field"><label for="forgot-new-pass2">Confirmer le nouveau mot de passe</label><input id="forgot-new-pass2" type="password" autocomplete="new-password" /></div>' +
+          '<button type="button" class="btn btn-primary" data-action="forgot-submit-reset" style="width:100%;">Définir le nouveau mot de passe</button>' +
+          '<button type="button" class="btn btn-ghost" data-action="toggle-forgot" style="width:100%;margin-top:8px;">← Retour à la connexion</button>';
+      } else {
+        body = '' +
+          '<h3>Mot de passe oublié</h3>' +
+          '<p class="hint-banner">Indiquez l’adresse e-mail associée à votre compte. Dans une vraie plateforme, un lien de réinitialisation vous serait envoyé par e-mail.</p>' +
+          '<div class="field"><label for="forgot-email">Adresse e-mail</label><input id="forgot-email" type="email" autocomplete="email" /></div>' +
+          '<button type="button" class="btn btn-primary" data-action="forgot-submit-email" style="width:100%;">Envoyer le lien de réinitialisation</button>' +
+          '<button type="button" class="btn btn-ghost" data-action="toggle-forgot" style="width:100%;margin-top:8px;">← Retour à la connexion</button>';
+      }
+      return '' +
+      '<div class="login-wrap">' +
+        '<h1 class="login-title">Suivi Alternance</h1>' +
+        '<p class="login-sub">Dojo Academy — centralisation du suivi pédagogique des stagiaires en alternance</p>' +
+        '<div class="login-card">' + body + '</div>' +
+      '</div>';
+    }
+    return '' +
+    '<div class="login-wrap">' +
+      '<h1 class="login-title">Suivi Alternance</h1>' +
+      '<p class="login-sub">Dojo Academy — centralisation du suivi pédagogique des stagiaires en alternance</p>' +
+      '<div class="login-card">' +
+        '<h3>Connexion</h3>' +
+        '<div class="field"><label for="login-identifiant">Identifiant (pseudo ou e-mail)</label><input id="login-identifiant" type="text" autocomplete="username" /></div>' +
+        '<div class="field"><label for="login-motdepasse">Mot de passe</label><input id="login-motdepasse" type="password" autocomplete="current-password" /></div>' +
+        '<button type="button" class="btn btn-primary" data-action="submit-login" style="width:100%;">Se connecter</button>' +
+        '<button type="button" class="btn btn-ghost" data-action="toggle-forgot" style="width:100%;margin-top:8px;">Mot de passe oublié ?</button>' +
+      '</div>' +
+      '<p class="hint-banner" style="margin-top:20px;">Vous ne connaissez pas vos identifiants ? Contactez votre référent Dojo Academy.</p>' +
+    '</div>';
+  }
+
+  function renderSetupPassword(){
+    var label = view.role==='tuteur' ? 'tuteur' : 'stagiaire';
+    return '' +
+    '<div class="login-wrap">' +
+      '<h1 class="login-title">Suivi Alternance</h1>' +
+      '<p class="login-sub">Première connexion</p>' +
+      '<div class="login-card">' +
+        '<h3>Bienvenue !</h3>' +
+        '<p class="hint-banner">C’est votre première connexion en tant que ' + label + '. Choisissez le mot de passe que vous utiliserez désormais pour vous connecter.</p>' +
+        '<div class="field"><label for="setup-new-pass">Nouveau mot de passe</label><input id="setup-new-pass" type="password" autocomplete="new-password" /></div>' +
+        '<div class="field"><label for="setup-new-pass2">Confirmer le mot de passe</label><input id="setup-new-pass2" type="password" autocomplete="new-password" /></div>' +
+        '<button type="button" class="btn btn-primary" data-action="submit-setup-password" style="width:100%;">Valider et me connecter</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderTopbar(){
+    var a = actorInfo();
+    var dotClass = syncStatus==='shared' ? 'shared' : syncStatus==='error' ? 'local' : '';
+    var dotLabel = syncStatus==='shared' ? 'Connecté' : syncStatus==='error' ? 'Connexion impossible' : 'Connexion…';
+    var panel = view.accountPanelOpen ? renderAccountPanel() : '';
+    var unreadCount = isFullAccess() ? stagiairesWithUnread().length : 0;
+    var unreadBadge = unreadCount>0 ? '<span class="pill pill-warning" title="Stagiaires avec un message en attente de réponse">🔔 '+unreadCount+'</span>' : '';
+    return '' +
+    '<div class="topbar">' +
+      '<div class="brand"><span class="mark">DA</span><div><h1>Suivi Alternance</h1><div class="sub">Dojo Academy</div></div></div>' +
+      '<div class="topbar-right">' +
+        unreadBadge +
+        '<span class="sync-dot ' + dotClass + '"><span class="d"></span>' + dotLabel + '</span>' +
+        '<div class="actor"><div class="name">' + esc(a.auteur) + '</div><div class="role">' + esc(a.roleLabel) + '</div></div>' +
+        '<button type="button" class="btn btn-sm" data-action="toggle-account-panel">Mon mot de passe</button>' +
+        '<button type="button" class="btn btn-sm" data-action="change-profile">Se déconnecter</button>' +
+      '</div>' +
+    '</div>' + panel;
+  }
+
+  function renderAccountPanel(){
+    return '' +
+    '<div class="account-panel"><div class="account-panel-inner">' +
+      '<h3 style="margin-bottom:10px;">Changer mon mot de passe</h3>' +
+      '<div class="form-grid">' +
+        '<div class="field"><label for="acc-current">Mot de passe actuel</label><input id="acc-current" type="password" autocomplete="current-password" /></div>' +
+        '<div class="field"></div>' +
+        '<div class="field"><label for="acc-new">Nouveau mot de passe</label><input id="acc-new" type="password" autocomplete="new-password" /></div>' +
+        '<div class="field"><label for="acc-new2">Confirmer le nouveau mot de passe</label><input id="acc-new2" type="password" autocomplete="new-password" /></div>' +
+      '</div>' +
+      '<div style="display:flex;gap:10px;">' +
+        '<button type="button" class="btn btn-primary" data-action="submit-change-password">Enregistrer</button>' +
+        '<button type="button" class="btn btn-ghost" data-action="close-account-panel">Annuler</button>' +
+      '</div>' +
+      '<p class="hint-banner" style="margin-top:14px;margin-bottom:0;">Mot de passe stocké en clair dans ce prototype de démonstration.</p>' +
+    '</div></div>';
+  }
+
+  function renderApp(){
+    var isRef = isFullAccess();
+    var main;
+    if(isRef){
+      if(view.selectedId){
+        var st = findStagiaire(view.selectedId);
+        if(!st){ view.selectedId=null; main = renderFormationsHome(); }
+        else { main = renderFiche(st); }
+      } else if(view.selectedFormation){
+        main = renderStagiairesList(view.selectedFormation);
+      } else {
+        main = renderFormationsHome();
+      }
+    } else if(view.role==='tuteur'){
+      var tList = tuteurStagiaires(view.profileId);
+      if(!tList.length){
+        main = '<div class="empty-state">Aucun stagiaire ne vous est encore associé à cette adresse. Contactez votre référent Dojo Academy.</div>';
+      } else {
+        var activeId = view.selectedId && tList.some(function(s){ return s.id===view.selectedId; }) ? view.selectedId : tList[0].id;
+        view.selectedId = activeId;
+        var stT = findStagiaire(activeId);
+        var switcher = tList.length > 1 ? renderTuteurStagiaireSwitcher(tList, activeId) : '';
+        main = switcher + renderFiche(stT);
+      }
+    } else {
+      var st2 = findStagiaire(view.profileId);
+      main = st2 ? renderFiche(st2) : '<div class="empty-state">Profil introuvable.</div>';
+    }
+    return renderTopbar() + '<div class="layout">' + main + '</div>';
+  }
+
+  function renderTuteurStagiaireSwitcher(list, activeId){
+    var btns = list.map(function(s){
+      return '<button type="button" class="tab-btn '+(s.id===activeId?'active':'')+'" data-action="switch-tuteur-stagiaire" data-id="'+esc(s.id)+'">'+esc(fullName(s))+'</button>';
+    }).join('');
+    return '<div class="section-head" style="margin-bottom:6px;"><h2 style="font-size:1rem;">Vos stagiaires suivis</h2></div>' +
+      '<div class="tabs" style="margin-bottom:20px;">'+btns+'</div>';
+  }
+
+  function globalStats(){
+    var total = DATA.stagiaires.length;
+    var eleve = 0, aVenir15 = 0;
+    DATA.stagiaires.forEach(function(st){
+      var lp = lastFilledPeriod(st);
+      if(lp && lp.risque==='eleve') eleve++;
+      if(lp && lp.prochaineVisite){
+        var d = daysUntil(lp.prochaineVisite);
+        if(d>=0 && d<=15) aVenir15++;
+      }
+    });
+    return { total:total, eleve:eleve, aVenir15:aVenir15 };
+  }
+
+  function renderFormationsHome(){
+    var stats = globalStats();
+    var priorityHtml = '';
+    var eleveList = DATA.stagiaires.filter(function(st){ var lp=lastFilledPeriod(st); return lp && lp.risque==='eleve'; });
+    if(eleveList.length){
+      priorityHtml = '<div class="priority-box"><h3>Stagiaires à risque élevé de rupture</h3><ul>' +
+        eleveList.map(function(st){ var lp=lastFilledPeriod(st); return '<li><strong>'+esc(fullName(st))+'</strong> — '+esc(st.structureNom)+'. Prochaine visite : '+fmtDate(lp.prochaineVisite)+'.</li>'; }).join('') +
+        '</ul></div>';
+    }
+    var unreadHtml = '';
+    var unreadList = stagiairesWithUnread();
+    if(unreadList.length){
+      unreadHtml = '<div class="priority-box"><h3>🔔 Messages en attente de réponse</h3><ul>' +
+        unreadList.map(function(st){ return '<li><strong>'+esc(fullName(st))+'</strong> — '+esc(st.structureNom)+'.</li>'; }).join('') +
+        '</ul></div>';
+    }
+    var cards = FORMATIONS.map(function(f){
+      var list = DATA.stagiaires.filter(function(s){ return s.formation===f; });
+      var eleveCount = list.filter(function(s){ var lp=lastFilledPeriod(s); return lp && lp.risque==='eleve'; }).length;
+      var unreadCount = list.filter(hasUnreadMessages).length;
+      return '<div class="formation-card row-click" data-action="open-formation" data-formation="'+esc(f)+'">' +
+        '<h3>'+esc(f)+'</h3>' +
+        '<div class="formation-card-meta">'+list.length+' stagiaire'+(list.length===1?'':'s')+
+          (eleveCount ? ' · <span class="pill pill-danger">'+eleveCount+' à risque</span>' : '') +
+          (unreadCount ? ' · <span class="pill pill-warning">🔔 '+unreadCount+'</span>' : '') +
+        '</div>' +
+      '</div>';
+    }).join('');
+    return '' +
+    '<div class="stats-row">' +
+      '<div class="stat-card"><div class="num">'+stats.total+'</div><div class="lbl">Stagiaires suivis</div></div>' +
+      '<div class="stat-card '+(stats.eleve>0?'warn':'')+'"><div class="num">'+stats.eleve+'</div><div class="lbl">Risque de rupture élevé</div></div>' +
+      '<div class="stat-card"><div class="num">'+stats.aVenir15+'</div><div class="lbl">Visites à prévoir sous 15 jours</div></div>' +
+    '</div>' +
+    priorityHtml +
+    unreadHtml +
+    '<div class="section-head"><h2 style="font-size:1.15rem;">Formations</h2></div>' +
+    '<div class="formation-grid">'+cards+'</div>';
+  }
+
+  function renderStagiairesList(formation){
+    var list = DATA.stagiaires.filter(function(s){ return s.formation===formation; });
+    var rows = list.map(function(st){
+      var lp = lastFilledPeriod(st);
+      var risk = lp ? lp.risque : '';
+      var next = lp ? lp.prochaineVisite : '';
+      return '<tr class="row-click" data-action="open-stagiaire" data-id="'+esc(st.id)+'">' +
+        '<td><strong>'+esc(fullName(st))+'</strong>'+(hasUnreadMessages(st) ? ' <span title="Message en attente de réponse">🔔</span>' : '')+'</td>' +
+        '<td>'+esc(st.structureNom)+'</td>' +
+        '<td>'+esc(st.tuteurNom)+'</td>' +
+        '<td><span class="pill '+riskClass(risk)+'">'+riskLabel(risk)+'</span></td>' +
+        '<td>'+fmtDate(next)+'</td>' +
+        '<td><div class="contact-links"><a href="tel:'+esc(st.telephone)+'">Tél</a><a href="mailto:'+esc(st.email)+'">Mail</a></div></td>' +
+      '</tr>';
+    }).join('');
+    var addForm = '';
+    if(view.showAdd){
+      addForm = '<div class="card add-form"><h3 style="margin-bottom:14px;">Nouveau stagiaire — '+esc(formation)+'</h3>' + infosFormFields({
+        prenom:'',nom:'',telephone:'',email:'',structureNom:'',structureAdresse:'',tuteurNom:'',tuteurTelephone:'',tuteurEmail:'',
+        identifiantStagiaire:'',motDePasseStagiaire:''
+      }, 'add-') +
+      '<div style="display:flex; gap:10px; margin-top:6px;"><button type="button" class="btn btn-primary" data-action="submit-add-stagiaire" data-formation="'+esc(formation)+'">Ajouter ce stagiaire</button><button type="button" class="btn" data-action="toggle-add-form">Annuler</button></div></div>';
+    }
+    return '' +
+    '<button type="button" class="btn btn-ghost" data-action="back-to-formations">← Retour aux formations</button>' +
+    '<div class="section-head" style="margin-top:14px;"><h2 style="font-size:1.15rem;">'+esc(formation)+'</h2><button type="button" class="btn btn-primary" data-action="toggle-add-form">+ Ajouter un stagiaire</button></div>' +
+    addForm +
+    (list.length ? '<div class="table-wrap"><table><thead><tr><th>Stagiaire</th><th>Structure</th><th>Tuteur</th><th>Risque</th><th>Prochaine visite</th><th>Contact</th></tr></thead><tbody>'+rows+'</tbody></table></div>' : '<div class="empty-state">Aucun stagiaire dans cette formation pour le moment.</div>');
+  }
+
+  function mailtoInviteHtml(email, prenom, identifiant, motDePasse, roleLabel){
+    if(!email || !identifiant || !motDePasse) return '';
+    var subject = 'Vos identifiants de connexion — Suivi Alternance (Dojo Academy)';
+    var body = 'Bonjour '+prenom+',\n\nVoici vos identifiants pour accéder à votre espace '+roleLabel+' sur Suivi Alternance :\n\nIdentifiant : '+identifiant+'\nMot de passe provisoire : '+motDePasse+'\n\nVous devrez choisir un nouveau mot de passe lors de votre première connexion.\n\nCordialement,\nDojo Academy';
+    var href = 'mailto:'+email+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+    var mailtoBtn = '<a class="btn btn-sm" href="'+esc(href)+'" style="margin-top:8px;display:inline-flex;">✉️ Envoyer les identifiants par e-mail</a>';
+    var copyBtn = '<button type="button" class="btn btn-sm" style="margin-top:8px;margin-left:8px;" data-action="copy-invite"' +
+      ' data-invite-email="'+esc(email)+'" data-invite-prenom="'+esc(prenom)+'" data-invite-id="'+esc(identifiant)+'"' +
+      ' data-invite-pwd="'+esc(motDePasse)+'" data-invite-role="'+esc(roleLabel)+'">📋 Copier le message</button>';
+    return mailtoBtn + copyBtn +
+      '<p class="hint-banner" style="margin-top:8px;">Si le bouton e-mail ne fonctionne pas (aucune messagerie configurée sur cet ordinateur), utilisez « Copier le message » puis collez-le dans un e-mail, un SMS ou une messagerie de votre choix.</p>';
+  }
+
+  function infosFormFields(v, prefix){
+    function f(id,label,val,type){
+      type = type||'text';
+      return '<div class="field"><label for="'+prefix+id+'">'+label+'</label><input id="'+prefix+id+'" type="'+type+'" value="'+esc(val)+'" /></div>';
+    }
+    return '<div class="form-grid">' +
+      f('prenom','Prénom',v.prenom) + f('nom','Nom',v.nom) +
+      f('telephone','Téléphone',v.telephone) + f('email','E-mail',v.email,'email') +
+      f('structureNom','Structure d’accueil',v.structureNom) + f('structureAdresse','Adresse de la structure',v.structureAdresse) +
+      f('tuteurNom','Nom du tuteur',v.tuteurNom) + f('tuteurTelephone','Téléphone tuteur',v.tuteurTelephone) +
+      f('tuteurEmail','E-mail tuteur',v.tuteurEmail,'email') +
+    '</div>' +
+    '<h4 style="font-size:0.9rem;margin:18px 0 10px;">Accès stagiaire</h4>' +
+    '<p class="hint-banner">Le pseudo de connexion est généré automatiquement au format prenom.nom si vous laissez le champ vide. Le mot de passe n’est jamais affiché ici pour des raisons de sécurité : laissez ce champ vide pour ne pas le modifier (fiche existante), ou saisissez-en un nouveau pour le définir/le changer. À la création, si vous le laissez vide, un mot de passe provisoire est généré automatiquement.</p>' +
+    '<div class="form-grid">' +
+      f('identifiantStagiaire','Identifiant stagiaire (pseudo ou e-mail)',v.identifiantStagiaire) + f('motDePasseStagiaire','Mot de passe stagiaire',v.motDePasseStagiaire) +
+    '</div>' +
+    (v.motDePasseDefiniStagiaire===false ? '<p class="hint-banner">Le/la stagiaire ne s’est pas encore connecté(e) pour la première fois : le mot de passe ci-dessus est provisoire, il/elle en choisira un nouveau à sa première connexion.</p>' : '') +
+    mailtoInviteHtml(v.email, v.prenom, v.identifiantStagiaire, v.motDePasseStagiaire, 'stagiaire') +
+    '<h4 style="font-size:0.9rem;margin:18px 0 10px;">Accès tuteur</h4>' +
+    tuteurAccessHint(v);
+  }
+
+  function tuteurAccessHint(v){
+    var email = (v.tuteurEmail||'').trim();
+    if(!email){
+      return '<p class="hint-banner">Renseignez l’adresse e-mail du tuteur ci-dessus pour lui donner accès à son espace : il se connectera avec cette adresse (ou son identifiant prenom.nom généré automatiquement). S’il encadre déjà un autre stagiaire suivi ici avec la même adresse, ce stagiaire apparaîtra automatiquement dans son espace, sous un onglet à son nom, avec le même mot de passe.</p>';
+    }
+    var compte = findCompteByEmail(email, 'tuteur');
+    if(compte){
+      var pwdNote = compte.motDePasseDefini===false
+        ? ', avec le mot de passe provisoire <strong>Provisoire2026!</strong> qu’il n’a pas encore changé.'
+        : ', avec le même mot de passe que ses autres stagiaires suivis ici (pour des raisons de sécurité, ce mot de passe n’est plus affiché ici une fois défini par le tuteur — utilisez « Mot de passe oublié » sur l’écran de connexion si besoin).';
+      return '<p class="hint-banner">Ce tuteur a déjà un accès (identifiant : <strong>'+esc(compte.pseudo)+'</strong>). Ce stagiaire apparaîtra automatiquement dans son espace, sous un nouvel onglet à son nom'+pwdNote+' Pour retirer son accès à ce stagiaire, videz ce champ e-mail et enregistrez ; si c’était son dernier stagiaire suivi, son compte sera automatiquement supprimé.</p>' +
+        (compte.motDePasseDefini===false ? mailtoInviteHtml(compte.email, compte.nomAffiche, compte.pseudo, 'Provisoire2026!', 'tuteur') : '');
+    }
+    var pseudoPreview = pseudoFromFullName(v.tuteurNom);
+    return '<p class="hint-banner">Nouvel accès tuteur : à l’enregistrement, un compte sera créé avec l’identifiant <strong>'+esc(pseudoPreview || '(généré à partir du nom une fois enregistré)')+'</strong> et le mot de passe provisoire <strong>Provisoire2026!</strong> ; le tuteur en choisira un nouveau à sa première connexion.</p>';
+  }
+
+  function renderFiche(st){
+    var editable = isFullAccess();
+    var lp = lastFilledPeriod(st);
+    var risk = lp ? lp.risque : '';
+    var backBtn = editable ? '<button type="button" class="btn btn-ghost" data-action="back-to-list">← Retour à la liste</button>' : '';
+    var tabBtns = FICHE_TABS.map(function(t){
+      var flag = (t[0]==='messages' && hasUnreadMessages(st)) ? ' 🔔' : '';
+      return '<button type="button" class="tab-btn '+(view.tab===t[0]?'active':'')+'" data-action="switch-tab" data-tab="'+t[0]+'">'+t[1]+flag+'</button>';
+    }).join('');
+    var body;
+    if(view.tab==='suivi-stagiaire') body = renderSuiviStagiaireTab(st, editable);
+    else if(view.tab==='suivi-tuteur') body = renderSuiviTuteurTab(st, editable);
+    else if(view.tab==='planning') body = renderPlanningTab(st, editable);
+    else if(view.tab==='documents') body = renderDocumentsTab(st, editable);
+    else if(view.tab==='messages') body = renderMessagesTab(st);
+    else if(view.tab==='referent-contact') body = renderReferentContactTab(editable);
+    else body = renderInfosTab(st, editable);
+    var moveFormation = editable ? (
+      '<div class="move-formation"><select id="move-formation-select">' +
+      FORMATIONS.map(function(f){ return '<option value="'+esc(f)+'" '+(st.formation===f?'selected':'')+'>'+esc(f)+'</option>'; }).join('') +
+      '</select><button type="button" class="btn btn-sm" data-action="save-formation" data-id="'+esc(st.id)+'">Déplacer vers cette formation</button></div>'
+    ) : '';
+    return '' +
+      backBtn +
+      '<div class="fiche-header">' +
+        '<div><h2>'+esc(fullName(st))+'</h2><div class="meta">'+esc(st.formation)+' · '+esc(st.structureNom)+'</div></div>' +
+        '<span class="pill '+riskClass(risk)+'">'+riskLabel(risk)+'</span>' +
+      '</div>' +
+      moveFormation +
+      '<div class="tabs">'+tabBtns+'</div>' +
+      '<div class="card">'+body+'</div>';
+  }
+
+  function roItem(k,v){ return '<div class="ro-item"><div class="k">'+k+'</div><div class="v">'+esc(v||'—')+'</div></div>'; }
+
+  var SELF_INFO_FIELDS = [
+    ['prenom','Prénom'], ['nom','Nom'], ['telephone','Téléphone'], ['email','E-mail'],
+    ['structureNom','Structure d’accueil'], ['structureAdresse','Adresse de la structure'],
+    ['tuteurNom','Nom du tuteur'], ['tuteurTelephone','Téléphone tuteur'], ['tuteurEmail','E-mail tuteur']
+  ];
+  var STAGIAIRE_EDITABLE_FIELDS = ['prenom','nom','telephone','email','structureNom','structureAdresse','tuteurNom','tuteurTelephone','tuteurEmail'];
+  var TUTEUR_EDITABLE_FIELDS = ['tuteurNom','tuteurTelephone','tuteurEmail'];
+
+  function renderSelfInfosForm(st, editableFields, hintText){
+    var editableHtml = SELF_INFO_FIELDS.filter(function(fd){ return editableFields.indexOf(fd[0])>=0; })
+      .map(function(fd){
+        var key=fd[0], label=fd[1];
+        var type = (key==='email'||key==='tuteurEmail') ? 'email' : 'text';
+        return '<div class="field"><label for="self-'+key+'">'+label+'</label><input id="self-'+key+'" type="'+type+'" value="'+esc(st[key])+'" /></div>';
+      }).join('');
+    var readonlyDefs = SELF_INFO_FIELDS.filter(function(fd){ return editableFields.indexOf(fd[0])<0; });
+    var readonlyHtml = readonlyDefs.length ? '<h4 style="font-size:0.9rem;margin:18px 0 10px;">Autres informations</h4><div class="readonly-grid">' +
+      readonlyDefs.map(function(fd){ return roItem(fd[1], st[fd[0]]); }).join('') + '</div>' : '';
+    return '<p class="hint-banner">'+hintText+'</p>' +
+      '<div class="form-grid">'+editableHtml+'</div>' +
+      '<button type="button" class="btn btn-primary" data-action="save-self-infos" data-id="'+esc(st.id)+'">Enregistrer</button>' +
+      readonlyHtml;
+  }
+
+  function renderInfosTab(st, editable){
+    if(editable){
+      var deleteBlock;
+      if(view.confirmDeleteStagiaire){
+        deleteBlock = '<div class="note-interne" style="margin-top:24px;border-color:var(--danger);">' +
+          '<p style="margin:0 0 10px;color:var(--danger);font-weight:600;">Supprimer définitivement '+esc(fullName(st))+' et toutes ses données (planning, évaluations, documents, visites, messages) ? Cette action est irréversible.</p>' +
+          '<button type="button" class="btn" style="background:var(--danger);color:#fff;border-color:var(--danger);" data-action="confirm-delete-stagiaire" data-id="'+esc(st.id)+'">Oui, supprimer définitivement</button> ' +
+          '<button type="button" class="btn" data-action="cancel-delete-stagiaire">Annuler</button>' +
+        '</div>';
+      } else {
+        deleteBlock = '<div style="margin-top:24px;"><button type="button" class="btn btn-sm" style="color:var(--danger);border-color:var(--danger);" data-action="ask-delete-stagiaire">Supprimer ce stagiaire</button></div>';
+      }
+      return infosFormFields(st, 'c-') + '<button type="button" class="btn btn-primary" data-action="save-infos" data-id="'+esc(st.id)+'" style="margin-top:6px;">Enregistrer les modifications</button>' + deleteBlock;
+    }
+    if(view.role==='stagiaire'){
+      return renderSelfInfosForm(st, STAGIAIRE_EDITABLE_FIELDS, 'Complétez ou corrigez vos informations et celles de votre tuteur ci-dessous : elles sont enregistrées immédiatement, pour tout le monde.');
+    }
+    if(view.role==='tuteur'){
+      return renderSelfInfosForm(st, TUTEUR_EDITABLE_FIELDS, 'Complétez ou corrigez vos coordonnées de tuteur pour ce stagiaire ci-dessous : elles sont enregistrées immédiatement.');
+    }
+    return '<div class="readonly-grid">' +
+      roItem('Prénom', st.prenom) + roItem('Nom', st.nom) +
+      roItem('Téléphone', st.telephone) + roItem('E-mail', st.email) +
+      roItem('Structure d’accueil', st.structureNom) + roItem('Adresse de la structure', st.structureAdresse) +
+      roItem('Tuteur', st.tuteurNom) + roItem('Téléphone tuteur', st.tuteurTelephone) +
+      roItem('E-mail tuteur', st.tuteurEmail) +
+    '</div>' +
+    '<p class="hint-banner" style="margin-top:18px;">Une information a changé ? Écrivez-le au référent depuis l’onglet Messagerie.</p>';
+  }
+
+  // ---------- Mon suivi : bloc rapide (référent) ----------
+  function periodQuickCard(p, idx, editable){
+    if(editable){
+      return '<div class="period-card"><h3>'+esc(p.periode)+'</h3><div class="period-grid">' +
+        '<div class="field"><label for="s-'+idx+'-dateVisite">Date de la visite</label><input type="date" id="s-'+idx+'-dateVisite" value="'+esc(p.dateVisite)+'" /></div>' +
+        '<div class="field"><label for="s-'+idx+'-prochaineVisite">Prochaine visite prévue</label><input type="date" id="s-'+idx+'-prochaineVisite" value="'+esc(p.prochaineVisite)+'" /></div>' +
+        '<div class="field"><label for="s-'+idx+'-risque">Niveau de risque de rupture</label><select id="s-'+idx+'-risque">' +
+          ['','faible','moyen','eleve'].map(function(r){ return '<option value="'+r+'" '+(p.risque===r?'selected':'')+'>'+(r?riskLabel(r):'Non renseigné')+'</option>'; }).join('') +
+        '</select></div>' +
+        '<div class="field"></div>' +
+        '</div>' +
+        '<div class="note-interne"><label for="s-'+idx+'-noteInterne">Note interne (visible par le référent et les coordinateurs uniquement)</label><textarea id="s-'+idx+'-noteInterne">'+esc(p.noteInterne)+'</textarea></div>' +
+      '</div>';
+    }
+    return '<div class="period-card"><h3>'+esc(p.periode)+' <span class="pill '+riskClass(p.risque)+'" style="margin-left:8px;">'+riskLabel(p.risque)+'</span></h3>' +
+      '<div class="readonly-grid">' +
+      roItem('Date de la visite', fmtDate(p.dateVisite)) + roItem('Prochaine visite prévue', fmtDate(p.prochaineVisite)) +
+      '</div></div>';
+  }
+
+  // ---------- Mon suivi : feuille détaillée ----------
+  function textBlock(idx, field, value, label, editable){
+    if(editable){
+      return '<div class="field full"><label for="d-'+idx+'-'+field+'">'+label+'</label><textarea id="d-'+idx+'-'+field+'">'+esc(value)+'</textarea></div>';
+    }
+    return '<div class="field"><div class="k" style="font-size:.72rem;text-transform:uppercase;color:var(--text-muted);margin-bottom:2px;">'+label+'</div><div class="ro-text">'+esc(value||'—')+'</div></div>';
+  }
+
+  function critGrid(list, values, idPrefix, idx, editable){
+    // Note: rendered as a plain row list (not a table inside an overflow-x
+    // container) so a native <select>'s dropdown never gets clipped by an
+    // ancestor's scroll box.
+    if(editable){
+      var rows = list.map(function(c){
+        return '<div class="rating-row"><div class="crit-label">'+c[1]+'</div><select id="'+idPrefix+'-'+idx+'-'+c[0]+'">' +
+          CRIT_LEVELS.map(function(l){ return '<option value="'+l[0]+'" '+(values[c[0]]===l[0]?'selected':'')+'>'+l[1]+'</option>'; }).join('') +
+        '</select></div>';
+      }).join('');
+      return '<div class="rating-list"><div class="rating-head"><span>Critère</span><span>Note (0 à 4)</span></div>'+rows+'</div>';
+    }
+    var rows2 = list.map(function(c){ return '<div class="rating-row"><div class="crit-label">'+c[1]+'</div><div class="rating-value">'+(values[c[0]] ? values[c[0]] : '—')+'</div></div>'; }).join('');
+    return '<div class="rating-list"><div class="rating-head"><span>Critère</span><span>Note</span></div>'+rows2+'</div>';
+  }
+
+  function ucBlockHtml(block, values, idx, editable){
+    var rows;
+    if(editable){
+      rows = block.items.map(function(it){
+        return '<div class="rating-row"><div class="crit-label">'+esc(it[1])+'</div><select id="uc-'+idx+'-'+it[0]+'">' +
+          UC_LEVELS.map(function(l){ return '<option value="'+l[0]+'" '+(values[it[0]]===l[0]?'selected':'')+'>'+l[1]+'</option>'; }).join('') +
+        '</select></div>';
+      }).join('');
+    } else {
+      rows = block.items.map(function(it){ return '<div class="rating-row"><div class="crit-label">'+esc(it[1])+'</div><div class="rating-value">'+ucLevelLabel(values[it[0]])+'</div></div>'; }).join('');
+    }
+    return '<h4 class="suivi-subtitle">'+esc(block.titre)+'</h4><div class="rating-list"><div class="rating-head"><span>Compétence</span><span>Niveau</span></div>'+rows+'</div>';
+  }
+
+  function syncTasksBufferFromDom(){
+    if(!tasksEditBuffer) return;
+    tasksEditBuffer.forEach(function(t, ri){
+      var el = document.getElementById('tk-'+ri+'-type');
+      if(el){ t.type = getVal('tk-'+ri+'-type'); t.volume = getVal('tk-'+ri+'-volume'); t.details = getVal('tk-'+ri+'-details'); }
+    });
+  }
+  function ensureTasksBuffer(st, idx){
+    var key = st.id+'|'+idx;
+    if(!tasksEditBuffer || tasksEditBuffer._for !== key){
+      var clone = deepClone(st.evaluations[idx].taches);
+      if(!clone.length) clone.push({type:'',volume:'',details:''});
+      clone._for = key;
+      tasksEditBuffer = clone;
+    }
+    return tasksEditBuffer;
+  }
+
+  function renderTasksBlock(st, idx, editable){
+    var out = '<div class="field"><label style="margin-bottom:8px;">Types de tâches réalisées</label>';
+    if(editable){
+      var buf = ensureTasksBuffer(st, idx);
+      out += buf.map(function(t,ri){
+        return '<div class="doc-row"><div class="grow field" style="margin-bottom:0;"><input id="tk-'+ri+'-type" value="'+esc(t.type)+'" placeholder="Type de tâche" /></div>' +
+          '<div class="field" style="margin-bottom:0;max-width:140px;"><input id="tk-'+ri+'-volume" value="'+esc(t.volume)+'" placeholder="Volume horaire" /></div>' +
+          '<div class="grow field" style="margin-bottom:0;"><input id="tk-'+ri+'-details" value="'+esc(t.details)+'" placeholder="Détails" /></div>' +
+          '<button type="button" class="btn btn-sm" data-action="remove-task-row" data-idx="'+ri+'">Retirer</button></div>';
+      }).join('');
+      out += '<button type="button" class="btn btn-sm" data-action="add-task-row">+ Ajouter une tâche</button>';
+    } else {
+      var taches = st.evaluations[idx].taches;
+      if(!taches.length){ out += '<p class="ro-text" style="color:var(--text-muted);">Aucune tâche renseignée.</p>'; }
+      else {
+        out += '<div class="table-wrap"><table><thead><tr><th>Type de tâche</th><th>Volume horaire</th><th>Détails</th></tr></thead><tbody>' +
+          taches.map(function(t){ return '<tr><td>'+esc(t.type)+'</td><td>'+esc(t.volume)+'</td><td>'+esc(t.details)+'</td></tr>'; }).join('') +
+        '</tbody></table></div>';
+      }
+    }
+    out += '</div>';
+    return out;
+  }
+
+  function periodSubTabs(dp){
+    return [0,1,2].map(function(i){
+      return '<button type="button" class="tab-btn small '+(dp===i?'active':'')+'" data-action="switch-detail-period" data-idx="'+i+'">Période '+(i+1)+'</button>';
+    }).join('');
+  }
+
+  function renderDetailPeriodStagiaire(st, idx, editable){
+    var d = st.evaluations[idx];
+    var html = '';
+    html += renderTasksBlock(st, idx, editable);
+    html += textBlock(idx,'competencesAcquisesStagiaire', d.competencesAcquisesStagiaire, 'Les compétences acquises par le/la stagiaire', editable);
+    html += textBlock(idx,'difficultesStagiaire', d.difficultesStagiaire, 'Les difficultés rencontrées', editable);
+    html += textBlock(idx,'remarquesStagiaire', d.remarquesStagiaire, 'Autres remarques', editable);
+    html += '<h4 class="suivi-subtitle">Critères</h4>';
+    html += critGrid(CRIT1, d.criteres1, 'c1', idx, editable);
+    html += '<h4 class="suivi-subtitle">Grille complémentaire</h4>';
+    html += critGrid(CRIT2, d.criteres2, 'c2', idx, editable);
+    html += '<h4 class="suivi-subtitle">Référentiel de compétences</h4>';
+    html += UC_BLOCKS.map(function(b){ return ucBlockHtml(b, d.uc, idx, editable); }).join('');
+    if(editable){
+      html += '<button type="button" class="btn btn-primary" data-action="save-detail-stagiaire" data-id="'+esc(st.id)+'" data-idx="'+idx+'" style="margin-top:10px;">Enregistrer cette période</button>';
+    }
+    return html;
+  }
+
+  function renderDetailPeriodTuteur(st, idx, editable){
+    var d = st.evaluations[idx];
+    var html = '';
+    html += textBlock(idx,'tuteurCompetencesAcquises', d.tuteurCompetencesAcquises, 'Les compétences acquises', editable);
+    html += '<h4 class="suivi-subtitle">Critères</h4>';
+    html += critGrid(CRIT1, d.criteres1, 'c1', idx, editable);
+    html += textBlock(idx,'tuteurDifficultes', d.tuteurDifficultes, "Les difficultés rencontrées par le tuteur", editable);
+    html += textBlock(idx,'tuteurRemarques', d.tuteurRemarques, 'Autres remarques', editable);
+    if(editable){
+      html += '<button type="button" class="btn btn-primary" data-action="save-detail-tuteur" data-id="'+esc(st.id)+'" data-idx="'+idx+'" style="margin-top:10px;">Enregistrer cette période</button>';
+    }
+    return html;
+  }
+
+  function renderSuiviStagiaireTab(st, editable){
+    var quickCards = st.suivis.map(function(p,idx){ return periodQuickCard(p, idx, editable); }).join('');
+    var dp = view.detailPeriod || 0;
+    var canEditStagiaire = editable || view.role==='stagiaire';
+    return '' +
+      '<h3 class="suivi-section-title">Suivi rapide</h3>' +
+      quickCards +
+      (editable ? '<button type="button" class="btn btn-primary" data-action="save-suivi" data-id="'+esc(st.id)+'">Enregistrer le suivi rapide</button>' : '') +
+      '<div class="suivi-tab-head" style="margin-top:32px;"><h3 class="suivi-section-title" style="margin:0;">Feuille de suivi stagiaire</h3>' +
+      '<button type="button" class="btn btn-sm" data-action="print-stagiaire-sheet" data-id="'+esc(st.id)+'">Imprimer (PDF)</button></div>' +
+      '<p class="hint-banner">Cette partie est renseignée par le/la stagiaire (avec les tâches réalisées, son propre ressenti sur la période, les grilles de critères et le référentiel de compétences).</p>' +
+      '<div class="tabs" style="margin-bottom:16px;">'+periodSubTabs(dp)+'</div>' +
+      renderDetailPeriodStagiaire(st, dp, canEditStagiaire);
+  }
+
+  function renderSuiviTuteurTab(st, editable){
+    var dp = view.detailPeriod || 0;
+    var canEditTuteur = editable || view.role==='tuteur';
+    return '' +
+      '<div class="suivi-tab-head"><h3 class="suivi-section-title" style="margin:0;">Feuille de suivi tuteur</h3>' +
+      '<button type="button" class="btn btn-sm" data-action="print-tuteur-sheet" data-id="'+esc(st.id)+'">Imprimer (PDF)</button></div>' +
+      '<p class="hint-banner">Cette partie est renseignée par le tuteur en structure (évaluation et grilles de critères).</p>' +
+      '<div class="tabs" style="margin-bottom:16px;">'+periodSubTabs(dp)+'</div>' +
+      renderDetailPeriodTuteur(st, dp, canEditTuteur);
+  }
+
+  function planningTable(list, kind, editable){
+    var labelCol = kind==='structure' ? 'Activité en structure' : 'Module à Dojo Academy';
+    var field = kind==='structure' ? 'activite' : 'module';
+    var prefix = kind==='structure' ? 'pS-' : 'pD-';
+    if(editable){
+      var rows = list.map(function(row,idx){
+        return '<tr><td>'+row.jour+'</td>' +
+          '<td><input id="'+prefix+idx+'-h" value="'+esc(row.horaires)+'" placeholder="ex. 9h-17h" /></td>' +
+          '<td><input id="'+prefix+idx+'-a" value="'+esc(row[field])+'" placeholder="ex. '+(kind==='structure'?'Encadrement cours enfants':'Pédagogie sportive')+'" /></td></tr>';
+      }).join('');
+      return '<div class="table-wrap"><table><thead><tr><th>Jour</th><th>Horaires</th><th>'+labelCol+'</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+    }
+    var filtered = list.filter(function(r){ return r.horaires || r[field]; });
+    if(!filtered.length) return '<p class="ro-text" style="color:var(--text-muted);">Aucun créneau renseigné.</p>';
+    var rows2 = filtered.map(function(row){ return '<tr><td>'+esc(row.jour)+'</td><td>'+esc(row.horaires)+'</td><td>'+esc(row[field])+'</td></tr>'; }).join('');
+    return '<div class="table-wrap"><table><thead><tr><th>Jour</th><th>Horaires</th><th>'+labelCol+'</th></tr></thead><tbody>'+rows2+'</tbody></table></div>';
+  }
+
+  function renderPlanningTab(st, editable){
+    var canEdit = editable || view.role==='stagiaire';
+    return '' +
+    '<div class="planning-block"><h3>Planning en structure d’accueil</h3>' + planningTable(st.planningStructure, 'structure', canEdit) + '</div>' +
+    '<div class="planning-block"><h3>Planning à Dojo Academy</h3>' + planningTable(st.planningDojo, 'dojo', canEdit) + '</div>' +
+    (canEdit ? '<button type="button" class="btn btn-primary" data-action="save-planning" data-id="'+esc(st.id)+'">Enregistrer le planning</button>' : '');
+  }
+
+  function renderDocumentsTab(st, editable){
+    if(!editable){
+      if(!st.documents.length) return '<p class="ro-text" style="color:var(--text-muted);">Aucun document disponible pour le moment.</p>';
+      return '<ul class="doc-list">' + st.documents.map(function(d){
+        return '<li><a href="'+esc(d.lien)+'" target="_blank" rel="noopener">'+esc(d.nom)+'</a><span class="doc-meta">'+fmtDate(d.date)+'</span></li>';
+      }).join('') + '</ul>';
+    }
+    if(visiteEditBuffer!==null){
+      return renderVisiteEditScreen(st);
+    }
+    if(docEditBuffer===null){
+      var list = st.documents.length ? '<ul class="doc-list">' + st.documents.map(function(d){
+        return '<li><a href="'+esc(d.lien)+'" target="_blank" rel="noopener">'+esc(d.nom)+'</a><span class="doc-meta">'+fmtDate(d.date)+'</span></li>';
+      }).join('') + '</ul>' : '<p class="ro-text" style="color:var(--text-muted);">Aucun document pour le moment.</p>';
+      return list + '<button type="button" class="btn" data-action="edit-documents" data-id="'+esc(st.id)+'" style="margin-top:10px;">Modifier la liste de documents</button>' +
+        '<p class="hint-banner" style="margin-top:14px;">Bulletin, contrat, attestations... indiquez un lien vers l’emplacement de chaque document.</p>' +
+        renderVisitesSection(st);
+    }
+    var rows = docEditBuffer.map(function(d,idx){
+      return '<div class="doc-row">' +
+        '<div class="grow field" style="margin-bottom:0;"><label>Nom du document</label><input id="doc-'+idx+'-nom" value="'+esc(d.nom)+'" placeholder="ex. Feuille de visite en structure" /></div>' +
+        '<div class="grow field" style="margin-bottom:0;"><label>Lien (Drive, cloud...)</label><input id="doc-'+idx+'-lien" value="'+esc(d.lien)+'" placeholder="https://..." /></div>' +
+        '<div class="field" style="margin-bottom:0; max-width:160px;"><label>Date</label><input type="date" id="doc-'+idx+'-date" value="'+esc(d.date)+'" /></div>' +
+        '<button type="button" class="btn btn-sm" data-action="remove-doc-row" data-idx="'+idx+'">Retirer</button>' +
+      '</div>';
+    }).join('');
+    return rows +
+      '<button type="button" class="btn btn-sm" data-action="add-doc-row" style="margin-bottom:16px;">+ Ajouter un document</button><br>' +
+      '<button type="button" class="btn btn-primary" data-action="save-documents" data-id="'+esc(st.id)+'">Enregistrer la liste</button> ' +
+      '<button type="button" class="btn" data-action="cancel-documents">Annuler</button>' +
+      '<p class="hint-banner" style="margin-top:14px;">Le stockage réel de fichiers nécessite une version en production : indiquez ici un lien vers l’emplacement du document (Drive, espace partagé...).</p>';
+  }
+
+  // ---------- fiches de visite en structure (référent / coordinateur uniquement) ----------
+  var VISITE_TYPES = [['visite','Feuille de visite'],['bilan','Fiche bilan de visite'],['remediation','Suivi après remédiation']];
+  var APPRECIATIONS = [['','Non renseigné'],['tres-satisfaisant','Très satisfaisant'],['satisfaisant','Satisfaisant'],['en-progres','En progrès'],['insuffisant','Insuffisant']];
+  var VISITE_DEROULEMENT = [
+    ['accueil','Accueil et présentation','Accueil du tuteur et de l’alternant. Présentation du cadre de la visite.','5 min'],
+    ['visite-structure','Visite de la structure','Découverte de l’environnement : salle, matériel, affichages, accessibilité, sécurité, ambiance générale.','5 à 10 min'],
+    ['entretien-tuteur','Entretien avec le tuteur','Échanges sur la progression de l’alternant, missions, points forts, axes d’amélioration, communication avec la Dojo Academy.','10 à 15 min'],
+    ['entretien-alternant','Entretien avec l’alternant','Retour sur son intégration, missions, relation tuteur, apports et difficultés.','10 à 15 min'],
+    ['entretien-tripartite','Entretien tripartite','Synthèse, définition d’objectifs communs, validation des actions à venir.','10 min'],
+    ['observation-seance','Observation de séance / cours','Observation : posture, gestion de groupe, sécurité, technique, pédagogie, communication, attitude.','15 à 20 min'],
+    ['bilan-conclusion','Bilan et conclusion','Retour à chaud, félicitations, points d’amélioration, planification de la prochaine visite.','5 à 10 min']
+  ];
+  var VISITE_GRILLE_OBSERVATION = [
+    ['posture','Posture professionnelle (attitude, présentation, gestion du temps)'],
+    ['communication','Communication et relation avec les publics'],
+    ['technique','Maîtrise technique du judo'],
+    ['securite','Gestion de la sécurité et de l’espace'],
+    ['dynamique','Dynamique de groupe et ambiance'],
+    ['adaptation','Adaptation pédagogique (niveaux, âges, besoins spécifiques)'],
+    ['engagement','Engagement, motivation et autonomie'],
+    ['structure-adaptee','Structure adaptée'],
+    ['lien-alternance','Est-ce en lien avec son alternance ?'],
+    ['materiel','Matériel']
+  ];
+  var BILAN_AXES = [
+    ['integration','Intégration dans la structure'],
+    ['pedagogie','Pédagogie et posture'],
+    ['technique','Technique et démonstration']
+  ];
+  var REMEDIATION_COLS = [['domaine','Domaine concerné'],['difficulte','Difficulté initiale'],['remediation','Remédiation mise en place'],['responsable','Responsable du suivi'],['echeance','Échéance prévue']];
+  var EVALUATION_REMEDIATION_COLS = [['domaine','Domaine'],['miseEnOeuvre','Mise en œuvre effective'],['observations','Observations'],['resultat','Résultat / Évolution constatée']];
+  var OBJECTIFS_COLS = [['objectif','Objectif complémentaire'],['moyens','Moyens / accompagnement'],['echeance','Échéance / Suivi']];
+  var VISITE_FIELD_LABELS = {
+    dateVisite:'Date de la visite', referent:'Référent / visiteur',
+    pointsForts:'Points forts identifiés', axesAmelioration:'Axes d’amélioration / accompagnement prévu', decisionsSuivis:'Décisions / Suivis à mettre en œuvre',
+    dureeSeance:'Durée de la séance observée', publicConcerne:'Public concerné', thematiqueSeance:'Thématique / contenu de séance', contexteVisite:'Contexte de la visite',
+    observationsFormateur:'Observations du formateur / référent',
+    appreciation:'Appréciation générale', commentaireGeneral:'Commentaire général',
+    datePrecedenteVisite:'Date de la précédente visite',
+    comportementProfessionnel:'Comportement professionnel', competencesTechniquesPedagogiques:'Compétences techniques et pédagogiques', postureEngagement:'Posture et engagement dans la structure'
+  };
+  function visiteTypeLabel(type){ var t = VISITE_TYPES.filter(function(v){ return v[0]===type; })[0]; return t ? t[1] : type; }
+  function appreciationLabel(v){ var a = APPRECIATIONS.filter(function(x){ return x[0]===v; })[0]; return a ? a[1] : 'Non renseigné'; }
+
+  function emptyVisite(type, st){
+    var a = actorInfo();
+    var base = { id:newId(), type:type, dateVisite:'', referent: a.auteur || '' };
+    if(type==='visite'){
+      base.deroulement = {}; VISITE_DEROULEMENT.forEach(function(e){ base.deroulement[e[0]] = ''; });
+      base.grille = {}; VISITE_GRILLE_OBSERVATION.forEach(function(e){ base.grille[e[0]] = {positifs:'', axes:''}; });
+      base.pointsForts = ''; base.axesAmelioration = ''; base.decisionsSuivis = '';
+    } else if(type==='bilan'){
+      base.dureeSeance=''; base.publicConcerne=''; base.thematiqueSeance=''; base.contexteVisite='Suivi de l’alternance';
+      base.axes = {}; BILAN_AXES.forEach(function(a2){ base.axes[a2[0]] = {positifs:'', ameliorer:''}; });
+      base.observationsFormateur = '';
+      base.appreciation = ''; base.commentaireGeneral = '';
+      base.remediationsProposees = [];
+    } else if(type==='remediation'){
+      base.datePrecedenteVisite = '';
+      base.remediationsPrecedentes = [];
+      base.evaluationRemediations = [];
+      base.comportementProfessionnel=''; base.competencesTechniquesPedagogiques=''; base.postureEngagement='';
+      base.nouveauxObjectifs = [];
+      base.appreciation=''; base.commentaireGeneral='';
+    }
+    return base;
+  }
+
+  var visiteEditBuffer = null;
+
+  // -- petits composants de champ --
+  function vField(id, type, label, value, full){
+    var inner;
+    if(type==='date') inner = '<input type="date" id="v-'+id+'" value="'+esc(value)+'" />';
+    else if(type==='textarea') inner = '<textarea id="v-'+id+'">'+esc(value)+'</textarea>';
+    else if(type==='appreciation') inner = '<select id="v-'+id+'">' + APPRECIATIONS.map(function(a){ return '<option value="'+a[0]+'" '+(value===a[0]?'selected':'')+'>'+esc(a[1])+'</option>'; }).join('') + '</select>';
+    else inner = '<input type="text" id="v-'+id+'" value="'+esc(value)+'" />';
+    return '<div class="field'+(full?' full':'')+'"><label for="v-'+id+'">'+esc(label)+'</label>'+inner+'</div>';
+  }
+  function vReadField(id, label, value){
+    return '<div class="field"><label>'+esc(label)+'</label><div class="ro-text">'+esc(value||'—')+'</div></div>';
+  }
+
+  // -- grille à lignes fixes, 1 ou 2 colonnes éditables (déroulement, grille d'observation, axes) --
+  function visiteGridEditable(rowsDef, cols, values, idPrefix){
+    var headExtra = cols.map(function(c){ return '<span>'+esc(c[1])+'</span>'; }).join('');
+    var rows = rowsDef.map(function(r){
+      var key = r[0], label = r[1];
+      var cells = cols.map(function(c){
+        var val = cols.length===1 ? (values[key]||'') : ((values[key]||{})[c[0]]||'');
+        return '<textarea id="'+idPrefix+'-'+key+'-'+c[0]+'" rows="2">'+esc(val)+'</textarea>';
+      }).join('');
+      return '<div class="rating-row rating-row-wide"><div class="crit-label">'+esc(label)+'</div>'+cells+'</div>';
+    }).join('');
+    return '<div class="rating-list rating-list-wide"><div class="rating-head rating-head-wide"><span>&nbsp;</span>'+headExtra+'</div>'+rows+'</div>';
+  }
+  function visiteGridReadOnly(rowsDef, cols, values){
+    var headExtra = cols.map(function(c){ return '<span>'+esc(c[1])+'</span>'; }).join('');
+    var rows = rowsDef.map(function(r){
+      var key = r[0], label = r[1];
+      var cells = cols.map(function(c){
+        var val = cols.length===1 ? (values[key]||'') : ((values[key]||{})[c[0]]||'');
+        return '<div class="ro-text">'+esc(val||'—')+'</div>';
+      }).join('');
+      return '<div class="rating-row rating-row-wide"><div class="crit-label">'+esc(label)+'</div>'+cells+'</div>';
+    }).join('');
+    return '<div class="rating-list rating-list-wide"><div class="rating-head rating-head-wide"><span>&nbsp;</span>'+headExtra+'</div>'+rows+'</div>';
+  }
+
+  // -- tableau "Déroulement de la visite" : colonnes Étape / Contenu / Durée fixes + Observations éditable --
+  function deroulementTable(buffer){
+    var rows = VISITE_DEROULEMENT.map(function(e){
+      var key=e[0], label=e[1], contenu=e[2], duree=e[3];
+      var val = buffer.deroulement[key]||'';
+      return '<tr><td><strong>'+esc(label)+'</strong></td><td>'+esc(contenu)+'</td><td>'+esc(duree)+'</td>' +
+        '<td><textarea id="vd-'+key+'" rows="2" style="width:100%;">'+esc(val)+'</textarea></td></tr>';
+    }).join('');
+    return '<div class="table-wrap"><table><thead><tr><th>Étape</th><th>Contenu / Objectif</th><th>Durée estimée</th><th>Observations / Notes</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  }
+  function deroulementTableReadOnly(v){
+    var rows = VISITE_DEROULEMENT.map(function(e){
+      var key=e[0], label=e[1], contenu=e[2], duree=e[3];
+      var val = (v.deroulement||{})[key]||'';
+      return '<tr><td><strong>'+esc(label)+'</strong></td><td>'+esc(contenu)+'</td><td>'+esc(duree)+'</td><td>'+esc(val||'—')+'</td></tr>';
+    }).join('');
+    return '<div class="table-wrap"><table><thead><tr><th>Étape</th><th>Contenu / Objectif</th><th>Durée estimée</th><th>Observations / Notes</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  }
+
+  // -- tableaux à lignes libres (remédiations, évaluation, objectifs) --
+  function editableRowsTable(buffer, field, columns, addLabel){
+    var rows = buffer[field] || [];
+    var head = '<div class="doc-row" style="font-weight:600;font-size:.76rem;color:var(--text-muted);">' +
+      columns.map(function(c){ return '<div class="grow field" style="margin-bottom:0;">'+esc(c[1])+'</div>'; }).join('') + '<div style="width:70px;"></div></div>';
+    var body = rows.map(function(r, ri){
+      return '<div class="doc-row">' + columns.map(function(c){
+        return '<div class="grow field" style="margin-bottom:0;"><input id="vt-'+field+'-'+ri+'-'+c[0]+'" value="'+esc(r[c[0]]||'')+'" placeholder="'+esc(c[1])+'" /></div>';
+      }).join('') + '<button type="button" class="btn btn-sm" data-action="remove-visite-row" data-field="'+field+'" data-idx="'+ri+'">Retirer</button></div>';
+    }).join('');
+    var empty = !rows.length ? '<p class="ro-text" style="color:var(--text-muted);margin:4px 0 8px;">Aucune ligne pour le moment.</p>' : '';
+    return '<div class="field full">' + head + empty + body +
+      '<button type="button" class="btn btn-sm" data-action="add-visite-row" data-field="'+field+'" style="margin-top:6px;">'+esc(addLabel||'+ Ajouter une ligne')+'</button></div>';
+  }
+  function readOnlyRowsTable(rows, columns){
+    if(!rows || !rows.length) return '<p class="ro-text" style="color:var(--text-muted);">Aucune ligne renseignée.</p>';
+    return '<div class="table-wrap"><table><thead><tr>' + columns.map(function(c){ return '<th>'+esc(c[1])+'</th>'; }).join('') + '</tr></thead><tbody>' +
+      rows.map(function(r){ return '<tr>'+columns.map(function(c){ return '<td>'+esc(r[c[0]]||'—')+'</td>'; }).join('')+'</tr>'; }).join('') +
+      '</tbody></table></div>';
+  }
+
+  // ---------- formulaires par type ----------
+  function renderVisiteFormFields(st, buffer, editable){
+    if(!editable) return renderVisiteFormReadOnly(st, buffer);
+    if(buffer.type==='visite'){
+      return '' +
+        '<div class="form-grid">' + vField('dateVisite','date',VISITE_FIELD_LABELS.dateVisite,buffer.dateVisite) + vField('referent','text',VISITE_FIELD_LABELS.referent,buffer.referent) + '</div>' +
+        '<h4 class="suivi-subtitle">Déroulement de la visite</h4>' + deroulementTable(buffer) +
+        '<h4 class="suivi-subtitle">Grille d’observation — séance encadrée par l’alternant</h4>' +
+        visiteGridEditable(VISITE_GRILLE_OBSERVATION, [['positifs','Éléments positifs'],['axes','Axes de progression']], buffer.grille, 'vg') +
+        '<h4 class="suivi-subtitle">Synthèse de la visite</h4>' +
+        vField('pointsForts','textarea',VISITE_FIELD_LABELS.pointsForts,buffer.pointsForts,true) +
+        vField('axesAmelioration','textarea',VISITE_FIELD_LABELS.axesAmelioration,buffer.axesAmelioration,true) +
+        vField('decisionsSuivis','textarea',VISITE_FIELD_LABELS.decisionsSuivis,buffer.decisionsSuivis,true);
+    }
+    if(buffer.type==='bilan'){
+      return '' +
+        '<div class="form-grid">' +
+          vField('dateVisite','date',VISITE_FIELD_LABELS.dateVisite,buffer.dateVisite) + vField('referent','text',VISITE_FIELD_LABELS.referent,buffer.referent) +
+          vField('dureeSeance','text',VISITE_FIELD_LABELS.dureeSeance,buffer.dureeSeance) + vField('publicConcerne','text',VISITE_FIELD_LABELS.publicConcerne,buffer.publicConcerne) +
+          vField('thematiqueSeance','text',VISITE_FIELD_LABELS.thematiqueSeance,buffer.thematiqueSeance) + vField('contexteVisite','text',VISITE_FIELD_LABELS.contexteVisite,buffer.contexteVisite) +
+        '</div>' +
+        '<h4 class="suivi-subtitle">Synthèse par axe</h4>' +
+        visiteGridEditable(BILAN_AXES, [['positifs','Points forts'],['ameliorer','Points à améliorer']], buffer.axes, 'vg') +
+        '<h4 class="suivi-subtitle">Analyse globale du parcours de l’apprenti(e)</h4>' +
+        vField('observationsFormateur','textarea',VISITE_FIELD_LABELS.observationsFormateur,buffer.observationsFormateur,true) +
+        '<h4 class="suivi-subtitle">Appréciation générale du visiteur</h4>' +
+        '<div class="form-grid">' + vField('appreciation','appreciation',VISITE_FIELD_LABELS.appreciation,buffer.appreciation) + '</div>' +
+        vField('commentaireGeneral','textarea',VISITE_FIELD_LABELS.commentaireGeneral,buffer.commentaireGeneral,true) +
+        '<h4 class="suivi-subtitle">Remédiations proposées</h4>' +
+        editableRowsTable(buffer, 'remediationsProposees', REMEDIATION_COLS, '+ Ajouter une remédiation proposée');
+    }
+    if(buffer.type==='remediation'){
+      return '' +
+        '<div class="form-grid">' +
+          vField('dateVisite','date',VISITE_FIELD_LABELS.dateVisite,buffer.dateVisite) + vField('referent','text',VISITE_FIELD_LABELS.referent,buffer.referent) +
+          vField('datePrecedenteVisite','date',VISITE_FIELD_LABELS.datePrecedenteVisite,buffer.datePrecedenteVisite) +
+        '</div>' +
+        '<h4 class="suivi-subtitle">Rappel des remédiations précédentes</h4>' +
+        editableRowsTable(buffer, 'remediationsPrecedentes', REMEDIATION_COLS, '+ Ajouter une remédiation') +
+        '<h4 class="suivi-subtitle">Évaluation de la mise en œuvre des remédiations</h4>' +
+        editableRowsTable(buffer, 'evaluationRemediations', EVALUATION_REMEDIATION_COLS, '+ Ajouter une évaluation') +
+        '<h4 class="suivi-subtitle">Analyse qualitative de la progression</h4>' +
+        vField('comportementProfessionnel','textarea',VISITE_FIELD_LABELS.comportementProfessionnel,buffer.comportementProfessionnel,true) +
+        vField('competencesTechniquesPedagogiques','textarea',VISITE_FIELD_LABELS.competencesTechniquesPedagogiques,buffer.competencesTechniquesPedagogiques,true) +
+        vField('postureEngagement','textarea',VISITE_FIELD_LABELS.postureEngagement,buffer.postureEngagement,true) +
+        '<h4 class="suivi-subtitle">Nouveaux objectifs ou ajustements proposés</h4>' +
+        editableRowsTable(buffer, 'nouveauxObjectifs', OBJECTIFS_COLS, '+ Ajouter un objectif') +
+        '<h4 class="suivi-subtitle">Appréciation finale après remédiation</h4>' +
+        '<div class="form-grid">' + vField('appreciation','appreciation',VISITE_FIELD_LABELS.appreciation,buffer.appreciation) + '</div>' +
+        vField('commentaireGeneral','textarea',VISITE_FIELD_LABELS.commentaireGeneral,buffer.commentaireGeneral,true);
+    }
+    return '';
+  }
+
+  function renderVisiteFormReadOnly(st, v){
+    if(v.type==='visite'){
+      return '' +
+        '<div class="readonly-grid">' + vReadField(null,VISITE_FIELD_LABELS.dateVisite,fmtDate(v.dateVisite)) + vReadField(null,VISITE_FIELD_LABELS.referent,v.referent) + '</div>' +
+        '<h4 class="suivi-subtitle">Déroulement de la visite</h4>' + deroulementTableReadOnly(v) +
+        '<h4 class="suivi-subtitle">Grille d’observation — séance encadrée par l’alternant</h4>' +
+        visiteGridReadOnly(VISITE_GRILLE_OBSERVATION, [['positifs','Éléments positifs'],['axes','Axes de progression']], v.grille||{}) +
+        '<h4 class="suivi-subtitle">Synthèse de la visite</h4>' +
+        vReadField(null,VISITE_FIELD_LABELS.pointsForts,v.pointsForts) + vReadField(null,VISITE_FIELD_LABELS.axesAmelioration,v.axesAmelioration) + vReadField(null,VISITE_FIELD_LABELS.decisionsSuivis,v.decisionsSuivis);
+    }
+    if(v.type==='bilan'){
+      return '' +
+        '<div class="readonly-grid">' +
+          vReadField(null,VISITE_FIELD_LABELS.dateVisite,fmtDate(v.dateVisite)) + vReadField(null,VISITE_FIELD_LABELS.referent,v.referent) +
+          vReadField(null,VISITE_FIELD_LABELS.dureeSeance,v.dureeSeance) + vReadField(null,VISITE_FIELD_LABELS.publicConcerne,v.publicConcerne) +
+          vReadField(null,VISITE_FIELD_LABELS.thematiqueSeance,v.thematiqueSeance) + vReadField(null,VISITE_FIELD_LABELS.contexteVisite,v.contexteVisite) +
+        '</div>' +
+        '<h4 class="suivi-subtitle">Synthèse par axe</h4>' +
+        visiteGridReadOnly(BILAN_AXES, [['positifs','Points forts'],['ameliorer','Points à améliorer']], v.axes||{}) +
+        '<h4 class="suivi-subtitle">Analyse globale du parcours de l’apprenti(e)</h4>' + vReadField(null,VISITE_FIELD_LABELS.observationsFormateur,v.observationsFormateur) +
+        '<h4 class="suivi-subtitle">Appréciation générale du visiteur</h4>' +
+        '<div class="readonly-grid">' + vReadField(null,VISITE_FIELD_LABELS.appreciation,appreciationLabel(v.appreciation)) + '</div>' +
+        vReadField(null,VISITE_FIELD_LABELS.commentaireGeneral,v.commentaireGeneral) +
+        '<h4 class="suivi-subtitle">Remédiations proposées</h4>' + readOnlyRowsTable(v.remediationsProposees, REMEDIATION_COLS);
+    }
+    if(v.type==='remediation'){
+      return '' +
+        '<div class="readonly-grid">' +
+          vReadField(null,VISITE_FIELD_LABELS.dateVisite,fmtDate(v.dateVisite)) + vReadField(null,VISITE_FIELD_LABELS.referent,v.referent) +
+          vReadField(null,VISITE_FIELD_LABELS.datePrecedenteVisite,fmtDate(v.datePrecedenteVisite)) +
+        '</div>' +
+        '<h4 class="suivi-subtitle">Rappel des remédiations précédentes</h4>' + readOnlyRowsTable(v.remediationsPrecedentes, REMEDIATION_COLS) +
+        '<h4 class="suivi-subtitle">Évaluation de la mise en œuvre des remédiations</h4>' + readOnlyRowsTable(v.evaluationRemediations, EVALUATION_REMEDIATION_COLS) +
+        '<h4 class="suivi-subtitle">Analyse qualitative de la progression</h4>' +
+        vReadField(null,VISITE_FIELD_LABELS.comportementProfessionnel,v.comportementProfessionnel) +
+        vReadField(null,VISITE_FIELD_LABELS.competencesTechniquesPedagogiques,v.competencesTechniquesPedagogiques) +
+        vReadField(null,VISITE_FIELD_LABELS.postureEngagement,v.postureEngagement) +
+        '<h4 class="suivi-subtitle">Nouveaux objectifs ou ajustements proposés</h4>' + readOnlyRowsTable(v.nouveauxObjectifs, OBJECTIFS_COLS) +
+        '<h4 class="suivi-subtitle">Appréciation finale après remédiation</h4>' +
+        '<div class="readonly-grid">' + vReadField(null,VISITE_FIELD_LABELS.appreciation,appreciationLabel(v.appreciation)) + '</div>' +
+        vReadField(null,VISITE_FIELD_LABELS.commentaireGeneral,v.commentaireGeneral);
+    }
+    return '';
+  }
+
+  function renderVisiteEditScreen(st){
+    var buffer = visiteEditBuffer;
+    var isNew = !buffer._existingId;
+    return '' +
+      '<button type="button" class="btn btn-ghost" data-action="close-visite" style="margin-bottom:14px;">← Retour aux documents</button>' +
+      '<div class="fiche-header"><div><h2>'+esc(visiteTypeLabel(buffer.type))+'</h2><div class="meta">'+esc(fullName(st))+' · '+esc(st.structureNom)+'</div></div></div>' +
+      '<div class="card">' + renderVisiteFormFields(st, buffer, true) +
+        '<div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;">' +
+          '<button type="button" class="btn btn-primary" data-action="save-visite" data-id="'+esc(st.id)+'">Enregistrer la fiche</button>' +
+          (isNew ? '' : '<button type="button" class="btn btn-sm" data-action="print-visite" data-id="'+esc(st.id)+'" data-visite="'+esc(buffer._existingId)+'">Imprimer (PDF)</button>') +
+          '<button type="button" class="btn" data-action="close-visite">Annuler</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function renderVisitesSection(st){
+    var list = st.visites || [];
+    var rows = list.length ? list.map(function(v){
+      return '<div class="doc-row"><div class="grow field" style="margin-bottom:0;"><strong>'+esc(visiteTypeLabel(v.type))+'</strong> — '+fmtDate(v.dateVisite)+
+        (v.appreciation ? ' · <span class="pill pill-neutral">'+esc(appreciationLabel(v.appreciation))+'</span>' : '') + '</div>' +
+        '<button type="button" class="btn btn-sm" data-action="open-visite" data-id="'+esc(st.id)+'" data-visite="'+esc(v.id)+'">Ouvrir</button>' +
+        '<button type="button" class="btn btn-sm" data-action="print-visite" data-id="'+esc(st.id)+'" data-visite="'+esc(v.id)+'">Imprimer</button>' +
+        '<button type="button" class="btn btn-sm" data-action="delete-visite" data-id="'+esc(st.id)+'" data-visite="'+esc(v.id)+'">Supprimer</button></div>';
+    }).join('') : '<p class="ro-text" style="color:var(--text-muted);">Aucune fiche de visite pour le moment.</p>';
+    var typeButtons = VISITE_TYPES.map(function(t){
+      return '<button type="button" class="btn btn-sm" data-action="new-visite" data-id="'+esc(st.id)+'" data-type="'+t[0]+'">+ '+esc(t[1])+'</button>';
+    }).join(' ');
+    return '<div class="section-head" style="margin-top:28px;margin-bottom:6px;"><h3 style="font-size:0.95rem;">Fiches de visite en structure</h3></div>' +
+      '<p class="hint-banner" style="margin-bottom:10px;">Visibles et modifiables uniquement par les référents et coordinateurs — ni le stagiaire ni le tuteur n’y ont accès.</p>' +
+      rows + '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">'+typeButtons+'</div>';
+  }
+
+  // -- synchronisation DOM -> buffer avant tout ajout/retrait de ligne, pour ne perdre aucune saisie --
+  function syncVisiteBufferFromDom(){
+    var buffer = visiteEditBuffer;
+    if(!buffer) return;
+    buffer.dateVisite = getVal('v-dateVisite');
+    buffer.referent = getVal('v-referent');
+    if(buffer.type==='visite'){
+      VISITE_DEROULEMENT.forEach(function(e){ buffer.deroulement[e[0]] = getVal('vd-'+e[0]); });
+      VISITE_GRILLE_OBSERVATION.forEach(function(e){
+        buffer.grille[e[0]] = { positifs: getVal('vg-'+e[0]+'-positifs'), axes: getVal('vg-'+e[0]+'-axes') };
+      });
+      buffer.pointsForts = getVal('v-pointsForts');
+      buffer.axesAmelioration = getVal('v-axesAmelioration');
+      buffer.decisionsSuivis = getVal('v-decisionsSuivis');
+    } else if(buffer.type==='bilan'){
+      buffer.dureeSeance = getVal('v-dureeSeance'); buffer.publicConcerne = getVal('v-publicConcerne');
+      buffer.thematiqueSeance = getVal('v-thematiqueSeance'); buffer.contexteVisite = getVal('v-contexteVisite');
+      BILAN_AXES.forEach(function(a){ buffer.axes[a[0]] = { positifs: getVal('vg-'+a[0]+'-positifs'), ameliorer: getVal('vg-'+a[0]+'-ameliorer') }; });
+      buffer.observationsFormateur = getVal('v-observationsFormateur');
+      buffer.appreciation = getVal('v-appreciation'); buffer.commentaireGeneral = getVal('v-commentaireGeneral');
+      syncRowsTableFromDom(buffer, 'remediationsProposees', REMEDIATION_COLS);
+    } else if(buffer.type==='remediation'){
+      buffer.datePrecedenteVisite = getVal('v-datePrecedenteVisite');
+      syncRowsTableFromDom(buffer, 'remediationsPrecedentes', REMEDIATION_COLS);
+      syncRowsTableFromDom(buffer, 'evaluationRemediations', EVALUATION_REMEDIATION_COLS);
+      buffer.comportementProfessionnel = getVal('v-comportementProfessionnel');
+      buffer.competencesTechniquesPedagogiques = getVal('v-competencesTechniquesPedagogiques');
+      buffer.postureEngagement = getVal('v-postureEngagement');
+      syncRowsTableFromDom(buffer, 'nouveauxObjectifs', OBJECTIFS_COLS);
+      buffer.appreciation = getVal('v-appreciation'); buffer.commentaireGeneral = getVal('v-commentaireGeneral');
+    }
+  }
+  function syncRowsTableFromDom(buffer, field, columns){
+    (buffer[field]||[]).forEach(function(r, ri){
+      var probe = document.getElementById('vt-'+field+'-'+ri+'-'+columns[0][0]);
+      if(!probe) return;
+      columns.forEach(function(c){ r[c[0]] = getVal('vt-'+field+'-'+ri+'-'+c[0]); });
+    });
+  }
+  function emptyRowFor(columns){
+    var o = {}; columns.forEach(function(c){ o[c[0]] = ''; }); return o;
+  }
+
+  // ---------- export PDF / texte des fiches de visite ----------
+  function buildVisiteBlocks(v, st){
+    var blocks = [];
+    blocks.push({type:'meta', text:'Stagiaire : '+fullName(st)});
+    blocks.push({type:'meta', text:'Structure d’accueil : '+st.structureNom});
+    blocks.push({type:'meta', text:'Tuteur : '+(st.tuteurNom||'—')});
+    blocks.push({type:'meta', text:'Date de la visite : '+(fmtDate(v.dateVisite)||'—')});
+    blocks.push({type:'meta', text:'Référent / visiteur : '+(v.referent||'—')});
+    if(v.type==='visite'){
+      blocks.push({type:'h3', text:'Déroulement de la visite'});
+      blocks.push({type:'table', headers:['Étape','Contenu / Objectif','Durée','Observations'], colFractions:[0.22,0.4,0.13,0.25],
+        rows: VISITE_DEROULEMENT.map(function(e){ return [e[1], e[2], e[3], v.deroulement[e[0]]||'—']; })});
+      blocks.push({type:'h3', text:'Grille d’observation'});
+      blocks.push({type:'table', headers:['Critère','Éléments positifs','Axes de progression'], colFractions:[0.36,0.32,0.32],
+        rows: VISITE_GRILLE_OBSERVATION.map(function(e){ var g=v.grille[e[0]]||{}; return [e[1], g.positifs||'—', g.axes||'—']; })});
+      blocks.push({type:'h3', text:'Synthèse de la visite'});
+      blocks.push({type:'p', label:'Points forts identifiés :', text:v.pointsForts});
+      blocks.push({type:'p', label:'Axes d’amélioration / accompagnement prévu :', text:v.axesAmelioration});
+      blocks.push({type:'p', label:'Décisions / Suivis à mettre en œuvre :', text:v.decisionsSuivis});
+    } else if(v.type==='bilan'){
+      blocks.push({type:'meta', text:'Durée de la séance observée : '+(v.dureeSeance||'—')});
+      blocks.push({type:'meta', text:'Public concerné : '+(v.publicConcerne||'—')});
+      blocks.push({type:'meta', text:'Thématique / contenu de séance : '+(v.thematiqueSeance||'—')});
+      blocks.push({type:'meta', text:'Contexte de la visite : '+(v.contexteVisite||'—')});
+      blocks.push({type:'h3', text:'Synthèse par axe'});
+      blocks.push({type:'table', headers:['Axe','Points forts','Points à améliorer'], colFractions:[0.34,0.33,0.33],
+        rows: BILAN_AXES.map(function(a){ var g=v.axes[a[0]]||{}; return [a[1], g.positifs||'—', g.ameliorer||'—']; })});
+      blocks.push({type:'h3', text:'Analyse globale du parcours de l’apprenti(e)'});
+      blocks.push({type:'p', label:'Observations du formateur / référent :', text:v.observationsFormateur});
+      blocks.push({type:'h3', text:'Appréciation générale du visiteur'});
+      blocks.push({type:'p', label:'Appréciation :', text:appreciationLabel(v.appreciation)});
+      blocks.push({type:'p', label:'Commentaire général :', text:v.commentaireGeneral});
+      blocks.push({type:'h3', text:'Remédiations proposées'});
+      if(v.remediationsProposees && v.remediationsProposees.length){
+        blocks.push({type:'table', headers:REMEDIATION_COLS.map(function(c){return c[1];}), colFractions:[0.2,0.2,0.24,0.18,0.18],
+          rows: v.remediationsProposees.map(function(r){ return REMEDIATION_COLS.map(function(c){ return r[c[0]]||'—'; }); })});
+      } else {
+        blocks.push({type:'p', text:'Aucune remédiation proposée.'});
+      }
+    } else if(v.type==='remediation'){
+      blocks.push({type:'meta', text:'Date de la précédente visite : '+(fmtDate(v.datePrecedenteVisite)||'—')});
+      blocks.push({type:'h3', text:'Rappel des remédiations précédentes'});
+      if(v.remediationsPrecedentes && v.remediationsPrecedentes.length){
+        blocks.push({type:'table', headers:REMEDIATION_COLS.map(function(c){return c[1];}), colFractions:[0.2,0.2,0.24,0.18,0.18],
+          rows: v.remediationsPrecedentes.map(function(r){ return REMEDIATION_COLS.map(function(c){ return r[c[0]]||'—'; }); })});
+      } else { blocks.push({type:'p', text:'Aucune remédiation renseignée.'}); }
+      blocks.push({type:'h3', text:'Évaluation de la mise en œuvre des remédiations'});
+      if(v.evaluationRemediations && v.evaluationRemediations.length){
+        blocks.push({type:'table', headers:EVALUATION_REMEDIATION_COLS.map(function(c){return c[1];}), colFractions:[0.22,0.26,0.26,0.26],
+          rows: v.evaluationRemediations.map(function(r){ return EVALUATION_REMEDIATION_COLS.map(function(c){ return r[c[0]]||'—'; }); })});
+      } else { blocks.push({type:'p', text:'Aucune évaluation renseignée.'}); }
+      blocks.push({type:'h3', text:'Analyse qualitative de la progression'});
+      blocks.push({type:'p', label:'Comportement professionnel :', text:v.comportementProfessionnel});
+      blocks.push({type:'p', label:'Compétences techniques et pédagogiques :', text:v.competencesTechniquesPedagogiques});
+      blocks.push({type:'p', label:'Posture et engagement dans la structure :', text:v.postureEngagement});
+      blocks.push({type:'h3', text:'Nouveaux objectifs ou ajustements proposés'});
+      if(v.nouveauxObjectifs && v.nouveauxObjectifs.length){
+        blocks.push({type:'table', headers:OBJECTIFS_COLS.map(function(c){return c[1];}), colFractions:[0.34,0.36,0.3],
+          rows: v.nouveauxObjectifs.map(function(r){ return OBJECTIFS_COLS.map(function(c){ return r[c[0]]||'—'; }); })});
+      } else { blocks.push({type:'p', text:'Aucun objectif renseigné.'}); }
+      blocks.push({type:'h3', text:'Appréciation finale après remédiation'});
+      blocks.push({type:'p', label:'Appréciation :', text:appreciationLabel(v.appreciation)});
+      blocks.push({type:'p', label:'Commentaire général :', text:v.commentaireGeneral});
+    }
+    return blocks;
+  }
+
+  function renderMessagesTab(st){
+    var a = actorInfo();
+    var staff = (a.roleKey==='referent' || a.roleKey==='coordinateur');
+    var thread = st.messages.length ? st.messages.map(function(m){
+      var mStaff = (m.role==='referent' || m.role==='coordinateur');
+      var mine = staff ? mStaff : (m.role===a.roleKey);
+      return '<div class="msg '+(mine?'mine':'')+'"><div class="meta">'+esc(m.auteur)+' · '+fmtDateTime(m.date)+'</div><div class="txt">'+esc(m.texte)+'</div></div>';
+    }).join('') : '<div class="msg-empty">Aucun message pour le moment. Envoyez le premier !</div>';
+    return '<div class="messages-thread">'+thread+'</div>' +
+      '<div class="msg-compose"><textarea id="msg-input" placeholder="Écrire un message…"></textarea>' +
+      '<button type="button" class="btn btn-primary" data-action="send-message" data-id="'+esc(st.id)+'">Envoyer</button></div>';
+  }
+
+  function renderReferentContactTab(editable){
+    var rc = findReferentCompte() || {};
+    if(editable){
+      return '<p class="hint-banner">Ces coordonnées sont visibles par les tuteurs et stagiaires, sur l’onglet « Référent suivi pédagogique » de leur fiche.</p>' +
+        '<div class="form-grid">' +
+          '<div class="field"><label for="rc-nom">Nom</label><input id="rc-nom" value="'+esc(rc.nom)+'" /></div>' +
+          '<div class="field"><label for="rc-prenom">Prénom</label><input id="rc-prenom" value="'+esc(rc.prenom)+'" /></div>' +
+          '<div class="field"><label for="rc-email">E-mail</label><input id="rc-email" type="email" value="'+esc(rc.email)+'" /></div>' +
+          '<div class="field"><label for="rc-telephone">Téléphone</label><input id="rc-telephone" value="'+esc(rc.telephone)+'" /></div>' +
+        '</div>' +
+        '<button type="button" class="btn btn-primary" data-action="save-referent-contact">Enregistrer</button>';
+    }
+    return '<div class="readonly-grid">' +
+      roItem('Nom', rc.nom) + roItem('Prénom', rc.prenom) +
+      roItem('E-mail', rc.email) + roItem('Téléphone', rc.telephone) +
+    '</div>' +
+    '<div class="contact-links" style="margin-top:14px;">' +
+      (rc.email ? '<a href="mailto:'+esc(rc.email)+'">Envoyer un e-mail</a>' : '') +
+      (rc.telephone ? '<a href="tel:'+esc(rc.telephone)+'">Appeler</a>' : '') +
+    '</div>';
+  }
+
+  // ---------- actions ----------
+  function readInfosFromForm(target, prefix){
+    var fields = ['prenom','nom','telephone','email','structureNom','structureAdresse','tuteurNom','tuteurTelephone','tuteurEmail','identifiantStagiaire','motDePasseStagiaire'];
+    fields.forEach(function(f){ target[f] = getVal(prefix+f); });
+    if(!target.identifiantStagiaire){ target.identifiantStagiaire = pseudoFromName(target.prenom, target.nom); }
+    if(target.motDePasseStagiaire){ target.motDePasseDefiniStagiaire = true; }
+    // L’accès tuteur n’est plus saisi ici : il est géré automatiquement par
+    // ensureTuteurComptes() à partir de l’adresse e-mail du tuteur (rattachement
+    // et compte partagé entre tous les stagiaires suivis par le même tuteur).
+    delete target.identifiantTuteur;
+    delete target.motDePasseTuteur;
+    delete target.motDePasseDefiniTuteur;
+  }
+
+  function resetNav(){
+    view.tab = 'infos'; view.detailPeriod = 0; docEditBuffer=null; tasksEditBuffer=null; visiteEditBuffer=null; view.confirmDeleteStagiaire=false;
+  }
+
+  function onClick(e){
+    var el = e.target.closest('[data-action]');
+    if(!el) return;
+    var action = el.getAttribute('data-action');
+    var id = el.getAttribute('data-id');
+
+    if(action==='submit-login'){ doLogin(); return; }
+    if(action==='change-profile'){
+      docEditBuffer = null; tasksEditBuffer = null; visiteEditBuffer = null;
+      view = { screen:'login', role:null, profileId:null, selectedFormation:null, selectedId:null, tab:'infos', showAdd:false, detailPeriod:0 };
+      saveView(); render(); return;
+    }
+    if(action==='toggle-forgot'){
+      view.forgotOpen = !view.forgotOpen; view.forgotStage = 'email'; view.forgotTarget = null;
+      saveView(); render(); return;
+    }
+    if(action==='forgot-submit-email'){
+      var forgotEmail = getVal('forgot-email');
+      findAccountByEmail(forgotEmail).then(function(foundAcc){
+        if(!foundAcc){ showToast('Aucun compte trouvé avec cette adresse e-mail.'); return; }
+        view.forgotTarget = foundAcc; view.forgotStage = 'reset';
+        saveView(); render();
+      });
+      return;
+    }
+    if(action==='forgot-submit-reset'){
+      var fnp = getVal('forgot-new-pass');
+      var fnp2 = getVal('forgot-new-pass2');
+      if(!fnp || fnp.length<4){ showToast('Le mot de passe doit contenir au moins 4 caractères.'); return; }
+      if(fnp!==fnp2){ showToast('Les deux mots de passe ne correspondent pas.'); return; }
+      var resetTarget = view.forgotTarget;
+      view.forgotOpen = false; view.forgotStage = 'email'; view.forgotTarget = null;
+      saveView(); render();
+      if(resetTarget){
+        applyPasswordReset(resetTarget, fnp).then(function(ok){
+          if(ok){
+            if(resetTarget.kind==='compte'){ var c=findCompte(resetTarget.id); if(c) c.motDePasseDefini=true; }
+            else { var s=findStagiaire(resetTarget.id); if(s) s.motDePasseDefiniStagiaire=true; }
+            showToast('Mot de passe mis à jour. Vous pouvez vous connecter.');
+          } else {
+            showToast('Le mot de passe n’a pas pu être mis à jour.');
+          }
+        });
+      }
+      return;
+    }
+    if(action==='submit-setup-password'){
+      var snp = getVal('setup-new-pass');
+      var snp2 = getVal('setup-new-pass2');
+      if(!snp || snp.length<4){ showToast('Le mot de passe doit contenir au moins 4 caractères.'); return; }
+      if(snp!==snp2){ showToast('Les deux mots de passe ne correspondent pas.'); return; }
+      var setupRole = view.role, setupProfileId = view.profileId;
+      var setupKind = setupRole==='stagiaire' ? 'stagiaire' : 'compte';
+      applyPasswordReset({kind:setupKind, id:setupProfileId}, snp).then(function(ok){
+        if(!ok){ showToast('Le mot de passe n’a pas pu être défini.'); return; }
+        view = { screen:'app', role:setupRole, profileId:setupProfileId, selectedFormation:null, selectedId:null, tab:'infos', showAdd:false, detailPeriod:0 };
+        saveView(); render();
+      });
+      return;
+    }
+    if(action==='toggle-account-panel'){
+      view.accountPanelOpen = !view.accountPanelOpen; saveView(); render(); return;
+    }
+    if(action==='close-account-panel'){
+      view.accountPanelOpen = false; saveView(); render(); return;
+    }
+    if(action==='submit-change-password'){
+      var accCur = getVal('acc-current');
+      var accNew = getVal('acc-new');
+      var accNew2 = getVal('acc-new2');
+      if(!accNew || accNew.length<4){ showToast('Le nouveau mot de passe doit contenir au moins 4 caractères.'); return; }
+      if(accNew!==accNew2){ showToast('Les deux mots de passe ne correspondent pas.'); return; }
+      var ownKind = view.role==='stagiaire' ? 'stagiaire' : 'compte';
+      applyOwnPasswordChange(ownKind, view.profileId, accCur, accNew).then(function(ok){
+        if(!ok){ showToast('Mot de passe actuel incorrect.'); return; }
+        view.accountPanelOpen = false;
+        saveView(); render();
+        showToast('Mot de passe mis à jour.');
+      });
+      return;
+    }
+    if(action==='open-formation'){
+      view.selectedFormation = el.getAttribute('data-formation'); view.selectedId=null; view.showAdd=false; view.accountPanelOpen=false;
+      saveView(); render(); return;
+    }
+    if(action==='back-to-formations'){
+      view.selectedFormation = null; view.selectedId = null; view.showAdd=false; view.accountPanelOpen=false;
+      saveView(); render(); return;
+    }
+    if(action==='open-stagiaire'){
+      var stOpen = findStagiaire(id);
+      view.selectedId = id;
+      if(stOpen) view.selectedFormation = stOpen.formation;
+      resetNav(); view.accountPanelOpen=false; saveView(); render(); return;
+    }
+    if(action==='back-to-list'){
+      view.selectedId = null; docEditBuffer=null; tasksEditBuffer=null; visiteEditBuffer=null; view.confirmDeleteStagiaire=false; view.accountPanelOpen=false; saveView(); render(); return;
+    }
+    if(action==='switch-tab'){
+      view.tab = el.getAttribute('data-tab'); view.detailPeriod = 0; docEditBuffer=null; tasksEditBuffer=null; visiteEditBuffer=null; view.confirmDeleteStagiaire=false;
+      saveView(); render(); return;
+    }
+    if(action==='switch-tuteur-stagiaire'){
+      view.selectedId = id; view.tab = 'infos'; view.detailPeriod = 0; docEditBuffer=null; tasksEditBuffer=null; visiteEditBuffer=null; view.confirmDeleteStagiaire=false;
+      saveView(); render(); return;
+    }
+    if(action==='switch-detail-period'){
+      view.detailPeriod = parseInt(el.getAttribute('data-idx'),10); tasksEditBuffer=null;
+      saveView(); render(); return;
+    }
+    if(action==='toggle-add-form'){
+      view.showAdd = !view.showAdd; saveView(); render(); return;
+    }
+    if(action==='submit-add-stagiaire'){
+      var formationForNew = el.getAttribute('data-formation') || FORMATIONS[0];
+      var nst = emptyStagiaire(formationForNew);
+      readInfosFromForm(nst, 'add-');
+      if(!nst.prenom || !nst.nom){ showToast('Merci de renseigner au moins le prénom et le nom.'); return; }
+      var newPwd = nst.motDePasseStagiaire;
+      sb.rpc('rpc_create_stagiaire', { p_data: nst, p_password: newPwd || null }).then(function(res){
+        if(res.error || !res.data){ showToast('Impossible d’ajouter ce stagiaire : '+(res.error?res.error.message:'')); return; }
+        nst.id = res.data;
+        nst.motDePasseDefiniStagiaire = !!newPwd;
+        if(!newPwd) nst.motDePasseStagiaire = 'Provisoire2026!';
+        DATA.stagiaires.push(nst);
+        view.showAdd = false; view.selectedId = nst.id; view.selectedFormation = formationForNew; resetNav();
+        saveView(); render();
+      });
+      return;
+    }
+    if(action==='save-formation'){
+      var newF = getVal('move-formation-select');
+      if(!newF) return;
+      view.selectedFormation = newF;
+      updateStagiaire(id, function(s){ s.formation = newF; });
+      return;
+    }
+    if(action==='save-infos'){
+      var newPwdInfos = getVal('c-motDePasseStagiaire');
+      updateStagiaire(id, function(s){ readInfosFromForm(s, 'c-'); });
+      if(newPwdInfos){
+        applyPasswordReset({kind:'stagiaire', id:id}, newPwdInfos).then(function(ok){
+          if(ok){ var s=findStagiaire(id); if(s){ s.motDePasseDefiniStagiaire=true; render(); } showToast('Informations et mot de passe enregistrés.'); }
+          else { showToast('Les informations sont enregistrées, mais le mot de passe n’a pas pu être mis à jour.'); }
+        });
+      }
+      return;
+    }
+    if(action==='ask-delete-stagiaire'){
+      view.confirmDeleteStagiaire = true; saveView(); render(); return;
+    }
+    if(action==='cancel-delete-stagiaire'){
+      view.confirmDeleteStagiaire = false; saveView(); render(); return;
+    }
+    if(action==='confirm-delete-stagiaire'){
+      view.confirmDeleteStagiaire = false; view.selectedId = null; view.selectedFormation = null; resetNav();
+      saveView(); render();
+      sb.rpc('rpc_delete_stagiaire', { p_id: id }).then(function(res){
+        if(res.error){ showToast('Suppression impossible : '+res.error.message); return; }
+        DATA.stagiaires = DATA.stagiaires.filter(function(s){ return s.id!==id; });
+        render();
+        showToast('Stagiaire supprimé.');
+      });
+      return;
+    }
+    if(action==='copy-invite'){
+      var invEmail = el.getAttribute('data-invite-email');
+      var invPrenom = el.getAttribute('data-invite-prenom');
+      var invId = el.getAttribute('data-invite-id');
+      var invPwd = el.getAttribute('data-invite-pwd');
+      var invRole = el.getAttribute('data-invite-role');
+      var invText = 'À : '+invEmail+'\nObjet : Vos identifiants de connexion — Suivi Alternance (Dojo Academy)\n\nBonjour '+invPrenom+',\n\nVoici vos identifiants pour accéder à votre espace '+invRole+' sur Suivi Alternance :\n\nIdentifiant : '+invId+'\nMot de passe provisoire : '+invPwd+'\n\nVous devrez choisir un nouveau mot de passe lors de votre première connexion.\n\nCordialement,\nDojo Academy';
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(invText).then(function(){
+          showToast('Message copié : collez-le dans un e-mail, SMS ou messagerie.');
+        }).catch(function(){
+          showToast('Impossible de copier automatiquement le message.');
+        });
+      } else {
+        showToast('Copie non disponible dans ce navigateur.');
+      }
+      return;
+    }
+    if(action==='save-suivi'){
+      updateStagiaire(id, function(s){
+        s.suivis.forEach(function(p, idx){
+          p.dateVisite = getVal('s-'+idx+'-dateVisite');
+          p.prochaineVisite = getVal('s-'+idx+'-prochaineVisite');
+          p.risque = getVal('s-'+idx+'-risque');
+          p.noteInterne = getVal('s-'+idx+'-noteInterne');
+        });
+      }); return;
+    }
+    if(action==='add-task-row'){
+      syncTasksBufferFromDom();
+      tasksEditBuffer.push({type:'',volume:'',details:''});
+      render(); return;
+    }
+    if(action==='remove-task-row'){
+      syncTasksBufferFromDom();
+      var ti = parseInt(el.getAttribute('data-idx'),10);
+      tasksEditBuffer.splice(ti,1);
+      render(); return;
+    }
+    if(action==='save-detail-stagiaire'){
+      var pidxS = parseInt(el.getAttribute('data-idx'),10);
+      syncTasksBufferFromDom();
+      var cleanedTasks = (tasksEditBuffer||[]).filter(function(t){ return t.type || t.volume || t.details; }).map(function(t){ return {type:t.type,volume:t.volume,details:t.details}; });
+      tasksEditBuffer = null;
+      updateStagiaire(id, function(s){
+        var d = s.evaluations[pidxS];
+        d.taches = cleanedTasks;
+        d.competencesAcquisesStagiaire = getVal('d-'+pidxS+'-competencesAcquisesStagiaire');
+        d.difficultesStagiaire = getVal('d-'+pidxS+'-difficultesStagiaire');
+        d.remarquesStagiaire = getVal('d-'+pidxS+'-remarquesStagiaire');
+        CRIT1.forEach(function(c){ d.criteres1[c[0]] = getVal('c1-'+pidxS+'-'+c[0]); });
+        CRIT2.forEach(function(c){ d.criteres2[c[0]] = getVal('c2-'+pidxS+'-'+c[0]); });
+        UC_BLOCKS.forEach(function(b){ b.items.forEach(function(it){ d.uc[it[0]] = getVal('uc-'+pidxS+'-'+it[0]); }); });
+      });
+      return;
+    }
+    if(action==='save-detail-tuteur'){
+      var pidxT = parseInt(el.getAttribute('data-idx'),10);
+      updateStagiaire(id, function(s){
+        var d = s.evaluations[pidxT];
+        d.tuteurCompetencesAcquises = getVal('d-'+pidxT+'-tuteurCompetencesAcquises');
+        CRIT1.forEach(function(c){ d.criteres1[c[0]] = getVal('c1-'+pidxT+'-'+c[0]); });
+        d.tuteurDifficultes = getVal('d-'+pidxT+'-tuteurDifficultes');
+        d.tuteurRemarques = getVal('d-'+pidxT+'-tuteurRemarques');
+      });
+      return;
+    }
+    if(action==='print-stagiaire-sheet'){
+      var stDlS = findStagiaire(id);
+      if(stDlS) printSheet('Suivi_stagiaire_'+slugify(fullName(stDlS)), buildStagiaireSheetBlocks(stDlS), 'Feuille de suivi stagiaire — '+fullName(stDlS));
+      return;
+    }
+    if(action==='print-tuteur-sheet'){
+      var stDlT = findStagiaire(id);
+      if(stDlT) printSheet('Suivi_tuteur_'+slugify(fullName(stDlT)), buildTuteurSheetBlocks(stDlT), 'Feuille de suivi tuteur — '+fullName(stDlT));
+      return;
+    }
+    if(action==='new-visite'){
+      var stNv = findStagiaire(id);
+      var vType = el.getAttribute('data-type');
+      if(stNv) visiteEditBuffer = emptyVisite(vType, stNv);
+      render(); return;
+    }
+    if(action==='open-visite'){
+      var stOv = findStagiaire(id);
+      var vidOpen = el.getAttribute('data-visite');
+      var vOpen = stOv ? stOv.visites.filter(function(x){ return x.id===vidOpen; })[0] : null;
+      if(vOpen){ visiteEditBuffer = deepClone(vOpen); visiteEditBuffer._existingId = vOpen.id; }
+      render(); return;
+    }
+    if(action==='close-visite'){
+      visiteEditBuffer = null; render(); return;
+    }
+    if(action==='save-visite'){
+      syncVisiteBufferFromDom();
+      var bufferToSave = visiteEditBuffer;
+      var existingId = bufferToSave._existingId;
+      var toStore = deepClone(bufferToSave);
+      delete toStore._existingId;
+      visiteEditBuffer = null;
+      updateStagiaire(id, function(s){
+        if(!s.visites) s.visites = [];
+        if(existingId){
+          var iFound = -1;
+          for(var vi=0; vi<s.visites.length; vi++){ if(s.visites[vi].id===existingId){ iFound = vi; break; } }
+          if(iFound>=0) s.visites[iFound] = toStore; else s.visites.push(toStore);
+        } else {
+          s.visites.push(toStore);
+        }
+      });
+      showToast('Fiche de visite enregistrée.');
+      return;
+    }
+    if(action==='delete-visite'){
+      var vidDel = el.getAttribute('data-visite');
+      updateStagiaire(id, function(s){
+        s.visites = (s.visites||[]).filter(function(x){ return x.id!==vidDel; });
+      });
+      return;
+    }
+    if(action==='print-visite'){
+      var stDv = findStagiaire(id);
+      var vidDl = el.getAttribute('data-visite');
+      var vDl = stDv ? stDv.visites.filter(function(x){ return x.id===vidDl; })[0] : null;
+      if(stDv && vDl){
+        printSheet(slugify(visiteTypeLabel(vDl.type))+'_'+slugify(fullName(stDv))+'_'+(vDl.dateVisite||''), buildVisiteBlocks(vDl, stDv), visiteTypeLabel(vDl.type)+' — '+fullName(stDv));
+      }
+      return;
+    }
+    if(action==='add-visite-row'){
+      syncVisiteBufferFromDom();
+      var addField = el.getAttribute('data-field');
+      var addCols = addField==='remediationsProposees' || addField==='remediationsPrecedentes' ? REMEDIATION_COLS :
+        addField==='evaluationRemediations' ? EVALUATION_REMEDIATION_COLS : OBJECTIFS_COLS;
+      if(!visiteEditBuffer[addField]) visiteEditBuffer[addField] = [];
+      visiteEditBuffer[addField].push(emptyRowFor(addCols));
+      render(); return;
+    }
+    if(action==='remove-visite-row'){
+      syncVisiteBufferFromDom();
+      var remField = el.getAttribute('data-field');
+      var remIdx = parseInt(el.getAttribute('data-idx'),10);
+      visiteEditBuffer[remField].splice(remIdx,1);
+      render(); return;
+    }
+    if(action==='save-planning'){
+      updateStagiaire(id, function(s){
+        s.planningStructure.forEach(function(row, idx){ row.horaires = getVal('pS-'+idx+'-h'); row.activite = getVal('pS-'+idx+'-a'); });
+        s.planningDojo.forEach(function(row, idx){ row.horaires = getVal('pD-'+idx+'-h'); row.module = getVal('pD-'+idx+'-a'); });
+      }); return;
+    }
+    if(action==='edit-documents'){
+      var s0 = findStagiaire(id);
+      docEditBuffer = deepClone(s0.documents);
+      if(!docEditBuffer.length) docEditBuffer.push({nom:'',lien:'',date:''});
+      render(); return;
+    }
+    if(action==='add-doc-row'){
+      syncDocBufferFromDom();
+      docEditBuffer.push({nom:'',lien:'',date:''}); render(); return;
+    }
+    if(action==='remove-doc-row'){
+      syncDocBufferFromDom();
+      var idx2 = parseInt(el.getAttribute('data-idx'),10);
+      docEditBuffer.splice(idx2,1); render(); return;
+    }
+    if(action==='cancel-documents'){
+      docEditBuffer = null; render(); return;
+    }
+    if(action==='save-documents'){
+      syncDocBufferFromDom();
+      var cleaned = docEditBuffer.filter(function(d){ return d.nom || d.lien; });
+      docEditBuffer = null;
+      updateStagiaire(id, function(s){ s.documents = cleaned; });
+      return;
+    }
+    if(action==='send-message'){
+      var txt = getVal('msg-input').trim();
+      if(!txt) return;
+      var a = actorInfo();
+      updateStagiaire(id, function(s){
+        s.messages.push({ auteur:a.auteur, role:a.roleKey, date:new Date().toISOString(), texte:txt });
+      });
+      return;
+    }
+    if(action==='save-referent-contact'){
+      var rcNom = getVal('rc-nom');
+      var rcPrenom = getVal('rc-prenom');
+      var rcEmail = getVal('rc-email');
+      var rcTel = getVal('rc-telephone');
+      var rcCompte = findReferentCompte();
+      if(rcCompte){
+        updateCompte(rcCompte.id, function(c){
+          c.nom = rcNom; c.prenom = rcPrenom; c.email = rcEmail; c.telephone = rcTel;
+          if(rcPrenom) c.nomAffiche = rcPrenom;
+        });
+      }
+      showToast('Coordonnées mises à jour.');
+      return;
+    }
+    if(action==='save-self-infos'){
+      var selfEditableKeys = view.role==='stagiaire' ? STAGIAIRE_EDITABLE_FIELDS : (view.role==='tuteur' ? TUTEUR_EDITABLE_FIELDS : []);
+      if(!selfEditableKeys.length) return;
+      updateStagiaire(id, function(s){
+        selfEditableKeys.forEach(function(k){ s[k] = getVal('self-'+k); });
+      });
+      showToast('Informations mises à jour.');
+      return;
+    }
+  }
+  function syncDocBufferFromDom(){
+    if(!docEditBuffer) return;
+    docEditBuffer.forEach(function(d, idx){
+      var el = document.getElementById('doc-'+idx+'-nom');
+      if(el){ d.nom = getVal('doc-'+idx+'-nom'); d.lien = getVal('doc-'+idx+'-lien'); d.date = getVal('doc-'+idx+'-date'); }
+    });
+  }
+
+  document.addEventListener('click', onClick);
+  document.addEventListener('keydown', function(e){
+    if(e.key==='Enter'){
+      var a = document.activeElement;
+      if(a && (a.id==='login-identifiant' || a.id==='login-motdepasse')){ e.preventDefault(); doLogin(); }
+    }
+  });
+
+  function init(){
+    render();
+    loadData().then(function(){ render(); });
+  }
+  init();
+})();
+</script>
+</body>
+</html>
