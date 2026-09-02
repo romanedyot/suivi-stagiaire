@@ -431,6 +431,12 @@ tr:last-child td{ border-bottom:none; }
   function stagiairesWithUnread(){
     return DATA.stagiaires.filter(hasUnreadMessages);
   }
+  // Version côté stagiaire : nouveau message si le dernier du fil vient du référent/coordinateur.
+  function hasUnreadMessagesForStagiaire(st){
+    if(!st || !st.messages || !st.messages.length) return false;
+    var last = st.messages[st.messages.length-1];
+    return last.role==='referent' || last.role==='coordinateur';
+  }
   function daysUntil(iso){
     if(!iso) return Infinity;
     var target = new Date(iso+'T00:00:00');
@@ -761,8 +767,16 @@ tr:last-child td{ border-bottom:none; }
     var dotClass = syncStatus==='shared' ? 'shared' : syncStatus==='error' ? 'local' : '';
     var dotLabel = syncStatus==='shared' ? 'Connecté' : syncStatus==='error' ? 'Connexion impossible' : 'Connexion…';
     var panel = view.accountPanelOpen ? renderAccountPanel() : '';
-    var unreadCount = isFullAccess() ? stagiairesWithUnread().length : 0;
-    var unreadBadge = unreadCount>0 ? '<span class="pill pill-warning" title="Stagiaires avec un message en attente de réponse">🔔 '+unreadCount+'</span>' : '';
+    var unreadCount = 0, unreadTitle = '';
+    if(isFullAccess()){
+      unreadCount = stagiairesWithUnread().length;
+      unreadTitle = 'Stagiaires avec un message en attente de réponse';
+    } else if(view.role==='stagiaire'){
+      var meSelf = findStagiaire(view.profileId);
+      unreadCount = hasUnreadMessagesForStagiaire(meSelf) ? 1 : 0;
+      unreadTitle = 'Nouveau message de votre référent';
+    }
+    var unreadBadge = unreadCount>0 ? '<span class="pill pill-warning" title="'+esc(unreadTitle)+'">🔔 '+unreadCount+'</span>' : '';
     return '' +
     '<div class="topbar">' +
       '<div class="brand"><span class="mark">DA</span><div><h1>Suivi Alternance</h1><div class="sub">Dojo Academy</div></div></div>' +
@@ -790,7 +804,7 @@ tr:last-child td{ border-bottom:none; }
         '<button type="button" class="btn btn-primary" data-action="submit-change-password">Enregistrer</button>' +
         '<button type="button" class="btn btn-ghost" data-action="close-account-panel">Annuler</button>' +
       '</div>' +
-      '<p class="hint-banner" style="margin-top:14px;margin-bottom:0;">Mot de passe stocké en clair dans ce prototype de démonstration.</p>' +
+      '<p class="hint-banner" style="margin-top:14px;margin-bottom:0;">Votre mot de passe est chiffré et n’est jamais visible, y compris par le référent.</p>' +
     '</div></div>';
   }
 
@@ -976,7 +990,8 @@ tr:last-child td{ border-bottom:none; }
     var risk = lp ? lp.risque : '';
     var backBtn = editable ? '<button type="button" class="btn btn-ghost" data-action="back-to-list">← Retour à la liste</button>' : '';
     var tabBtns = FICHE_TABS.map(function(t){
-      var flag = (t[0]==='messages' && hasUnreadMessages(st)) ? ' 🔔' : '';
+      var isUnread = view.role==='stagiaire' ? hasUnreadMessagesForStagiaire(st) : hasUnreadMessages(st);
+      var flag = (t[0]==='messages' && isUnread) ? ' 🔔' : '';
       return '<button type="button" class="tab-btn '+(view.tab===t[0]?'active':'')+'" data-action="switch-tab" data-tab="'+t[0]+'">'+t[1]+flag+'</button>';
     }).join('');
     var body;
@@ -1207,7 +1222,7 @@ tr:last-child td{ border-bottom:none; }
       quickCards +
       (editable ? '<button type="button" class="btn btn-primary" data-action="save-suivi" data-id="'+esc(st.id)+'">Enregistrer le suivi rapide</button>' : '') +
       '<div class="suivi-tab-head" style="margin-top:32px;"><h3 class="suivi-section-title" style="margin:0;">Feuille de suivi stagiaire</h3>' +
-      '<button type="button" class="btn btn-sm" data-action="print-stagiaire-sheet" data-id="'+esc(st.id)+'">Imprimer (PDF)</button></div>' +
+      '<button type="button" class="btn btn-sm" data-action="print-stagiaire-sheet" data-id="'+esc(st.id)+'">Télécharger (PDF)</button></div>' +
       '<p class="hint-banner">Cette partie est renseignée par le/la stagiaire (avec les tâches réalisées, son propre ressenti sur la période, les grilles de critères et le référentiel de compétences).</p>' +
       '<div class="tabs" style="margin-bottom:16px;">'+periodSubTabs(dp)+'</div>' +
       renderDetailPeriodStagiaire(st, dp, canEditStagiaire);
@@ -1218,7 +1233,7 @@ tr:last-child td{ border-bottom:none; }
     var canEditTuteur = editable || view.role==='tuteur';
     return '' +
       '<div class="suivi-tab-head"><h3 class="suivi-section-title" style="margin:0;">Feuille de suivi tuteur</h3>' +
-      '<button type="button" class="btn btn-sm" data-action="print-tuteur-sheet" data-id="'+esc(st.id)+'">Imprimer (PDF)</button></div>' +
+      '<button type="button" class="btn btn-sm" data-action="print-tuteur-sheet" data-id="'+esc(st.id)+'">Télécharger (PDF)</button></div>' +
       '<p class="hint-banner">Cette partie est renseignée par le tuteur en structure (évaluation et grilles de critères).</p>' +
       '<div class="tabs" style="margin-bottom:16px;">'+periodSubTabs(dp)+'</div>' +
       renderDetailPeriodTuteur(st, dp, canEditTuteur);
