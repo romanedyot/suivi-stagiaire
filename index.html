@@ -158,6 +158,12 @@ tr:last-child td{ border-bottom:none; }
 .fiche-header{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:6px; flex-wrap:wrap; }
 .fiche-header h2{ font-size:1.4rem; }
 .fiche-header .meta{ color:var(--text-muted); font-size:0.86rem; margin-top:3px; }
+.fiche-header-right{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.photo-box{ width:56px; height:56px; border-radius:10px; overflow:hidden; background:var(--surface-alt); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.photo-box img{ width:100%; height:100%; object-fit:cover; display:block; }
+.photo-box-editable{ cursor:pointer; }
+.photo-box-editable:hover{ border-color:var(--accent); }
+.photo-placeholder{ font-size:1.4rem; color:var(--text-muted); line-height:1; }
 .move-formation{ display:flex; gap:8px; align-items:center; max-width:380px; margin:10px 0 20px; }
 .move-formation select{ flex:1; }
 .tabs{ display:flex; gap:4px; margin-bottom:18px; flex-wrap:wrap; border-bottom:1px solid var(--border); }
@@ -232,6 +238,7 @@ tr:last-child td{ border-bottom:none; }
 .msg-compose textarea{ min-height:52px; }
 .login-wrap{ max-width:460px; margin:0 auto; padding:60px 20px; }
 .login-title{ text-align:center; margin-bottom:8px; font-size:2rem; }
+.login-logo{ display:block; max-width:220px; max-height:110px; width:auto; height:auto; margin:0 auto 18px; }
 .login-sub{ text-align:center; color:var(--text-muted); margin-bottom:36px; font-size:0.94rem; }
 .login-card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:24px; box-shadow:var(--shadow); }
 .login-card h3{ font-size:1.02rem; margin-bottom:16px; }
@@ -489,7 +496,7 @@ tr:last-child td{ border-bottom:none; }
       motDePasseDefiniStagiaire: row.mot_de_passe_defini_stagiaire,
       planningStructure: row.planning_structure || [], planningDojo: row.planning_dojo || [],
       documents: row.documents || [], visites: row.visites || [], suivis: row.suivis || [],
-      evaluations: row.evaluations || [], messages: row.messages || []
+      evaluations: row.evaluations || [], messages: row.messages || [], photo: row.photo || ''
     };
   }
   function rowToCompte(row){
@@ -580,7 +587,7 @@ tr:last-child td{ border-bottom:none; }
   // Les comptes tuteur sont désormais créés/mis à jour/supprimés automatiquement
   // côté base de données (trigger sync_tuteur_comptes), à partir de l'adresse
   // e-mail du tuteur renseignée sur chaque fiche stagiaire.
-  function updateCompte(id, mutator){
+  function updateCompte(id, mutator, successMsg){
     var c = findCompte(id);
     if(!c) return;
     var clone = deepClone(c);
@@ -592,6 +599,7 @@ tr:last-child td{ border-bottom:none; }
       nom: clone.nom, prenom: clone.prenom, email: clone.email, telephone: clone.telephone, nomAffiche: clone.nomAffiche
     }}).then(function(res){
       if(res.error){ showToast('Enregistrement impossible : '+res.error.message); }
+      else if(successMsg !== null){ showToast(successMsg || 'Enregistré.'); }
     });
   }
 
@@ -714,7 +722,7 @@ tr:last-child td{ border-bottom:none; }
       id:newId(), prenom:'', nom:'', formation: formation || FORMATIONS[0],
       telephone:'', email:'', structureNom:'', structureAdresse:'',
       tuteurNom:'', tuteurTelephone:'', tuteurEmail:'',
-      identifiantStagiaire:'', motDePasseStagiaire:'', motDePasseDefiniStagiaire:true,
+      identifiantStagiaire:'', motDePasseStagiaire:'', motDePasseDefiniStagiaire:true, photo:'',
       planningStructure: JOURS.map(function(j){ return {jour:j, horaires:'', activite:''}; }),
       planningDojo: JOURS.map(function(j){ return {jour:j, horaires:'', module:''}; }),
       documents: [],
@@ -778,9 +786,9 @@ tr:last-child td{ border-bottom:none; }
   }
 
   // ---------- persistence ----------
-  var STAGIAIRE_PATCH_FIELDS = ['prenom','nom','formation','telephone','email','structureNom','structureAdresse','tuteurNom','tuteurTelephone','tuteurEmail','identifiantStagiaire','planningStructure','planningDojo','documents','visites','suivis','evaluations','messages'];
+  var STAGIAIRE_PATCH_FIELDS = ['prenom','nom','formation','telephone','email','structureNom','structureAdresse','tuteurNom','tuteurTelephone','tuteurEmail','identifiantStagiaire','planningStructure','planningDojo','documents','visites','suivis','evaluations','messages','photo'];
 
-  function updateStagiaire(id, mutator){
+  function updateStagiaire(id, mutator, successMsg){
     var st = findStagiaire(id);
     if(!st) return;
     var clone = deepClone(st);
@@ -793,11 +801,13 @@ tr:last-child td{ border-bottom:none; }
     STAGIAIRE_PATCH_FIELDS.forEach(function(k){ patch[k] = clone[k]; });
     sb.rpc('rpc_update_stagiaire', { p_id: id, p_patch: patch }).then(function(res){
       if(res.error){ showToast('Enregistrement impossible : '+res.error.message); }
+      else if(successMsg !== null){ showToast(successMsg || 'Enregistré.'); }
     });
   }
 
   var toastTimer = null;
   function showToast(msg){
+    if(msg==null) return;
     var t = document.getElementById('toast');
     if(!t) return;
     t.textContent = msg;
@@ -838,13 +848,15 @@ tr:last-child td{ border-bottom:none; }
       }
       return '' +
       '<div class="login-wrap">' +
-        '<h1 class="login-title">Suivi Alternance</h1>' +
+        '<img src="logo.png" alt="Dojo Academy" class="login-logo" onerror="this.style.display=\'none\'" />' +
+      '<h1 class="login-title">Suivi Alternance</h1>' +
         '<p class="login-sub">Dojo Academy — centralisation du suivi pédagogique des stagiaires en alternance</p>' +
         '<div class="login-card">' + body + '</div>' +
       '</div>';
     }
     return '' +
     '<div class="login-wrap">' +
+      '<img src="logo.png" alt="Dojo Academy" class="login-logo" onerror="this.style.display=\'none\'" />' +
       '<h1 class="login-title">Suivi Alternance</h1>' +
       '<p class="login-sub">Dojo Academy — centralisation du suivi pédagogique des stagiaires en alternance</p>' +
       '<div class="login-card">' +
@@ -862,6 +874,7 @@ tr:last-child td{ border-bottom:none; }
     var label = view.role==='tuteur' ? 'tuteur' : 'stagiaire';
     return '' +
     '<div class="login-wrap">' +
+      '<img src="logo.png" alt="Dojo Academy" class="login-logo" onerror="this.style.display=\'none\'" />' +
       '<h1 class="login-title">Suivi Alternance</h1>' +
       '<p class="login-sub">Première connexion</p>' +
       '<div class="login-card">' +
@@ -1123,15 +1136,29 @@ tr:last-child td{ border-bottom:none; }
       FORMATIONS.map(function(f){ return '<option value="'+esc(f)+'" '+(st.formation===f?'selected':'')+'>'+esc(f)+'</option>'; }).join('') +
       '</select><button type="button" class="btn btn-sm" data-action="save-formation" data-id="'+esc(st.id)+'">Déplacer vers cette formation</button></div>'
     ) : '';
+    var canEditPhoto = editable || view.role==='stagiaire';
     return '' +
       backBtn +
       '<div class="fiche-header">' +
         '<div><h2>'+esc(fullName(st))+'</h2><div class="meta">'+esc(st.formation)+' · '+esc(st.structureNom)+'</div></div>' +
-        '<span class="pill '+riskClass(risk)+'">'+riskLabel(risk)+'</span>' +
+        '<div class="fiche-header-right">' +
+          renderPhotoBox(st, canEditPhoto) +
+          '<span class="pill '+riskClass(risk)+'">'+riskLabel(risk)+'</span>' +
+        '</div>' +
       '</div>' +
       moveFormation +
       '<div class="tabs">'+tabBtns+'</div>' +
       '<div class="card">'+body+'</div>';
+  }
+
+  function renderPhotoBox(st, canEdit){
+    var inner = st.photo
+      ? '<img src="'+esc(st.photo)+'" alt="Photo de '+esc(fullName(st))+'" />'
+      : '<span class="photo-placeholder">+</span>';
+    if(!canEdit) return '<div class="photo-box">'+inner+'</div>';
+    return '<label class="photo-box photo-box-editable" title="Ajouter ou changer la photo">' + inner +
+      '<input type="file" accept="image/*" data-action="upload-photo" data-id="'+esc(st.id)+'" style="display:none;" />' +
+    '</label>';
   }
 
   function roItem(k,v){ return '<div class="ro-item"><div class="k">'+k+'</div><div class="v">'+esc(v||'—')+'</div></div>'; }
@@ -1984,6 +2011,7 @@ tr:last-child td{ border-bottom:none; }
         DATA.stagiaires.push(nst);
         view.showAdd = false; view.selectedId = nst.id; view.selectedFormation = formationForNew; resetNav();
         saveView(); render();
+        showToast('Stagiaire ajouté.');
       });
       return;
     }
@@ -1996,7 +2024,7 @@ tr:last-child td{ border-bottom:none; }
     }
     if(action==='save-infos'){
       var newPwdInfos = getVal('c-motDePasseStagiaire');
-      updateStagiaire(id, function(s){ readInfosFromForm(s, 'c-'); });
+      updateStagiaire(id, function(s){ readInfosFromForm(s, 'c-'); }, newPwdInfos ? null : 'Informations mises à jour.');
       if(newPwdInfos){
         applyPasswordReset({kind:'stagiaire', id:id}, newPwdInfos).then(function(ok){
           if(ok){ var s=findStagiaire(id); if(s){ s.motDePasseDefiniStagiaire=true; render(); } showToast('Informations et mot de passe enregistrés.'); }
@@ -2131,8 +2159,7 @@ tr:last-child td{ border-bottom:none; }
         } else {
           s.visites.push(toStore);
         }
-      });
-      showToast('Fiche de visite enregistrée.');
+      }, 'Fiche de visite enregistrée.');
       return;
     }
     if(action==='delete-visite'){
@@ -2204,7 +2231,7 @@ tr:last-child td{ border-bottom:none; }
       var a = actorInfo();
       updateStagiaire(id, function(s){
         s.messages.push({ auteur:a.auteur, role:a.roleKey, date:new Date().toISOString(), texte:txt });
-      });
+      }, 'Message envoyé.');
       return;
     }
     if(action==='save-referent-contact'){
@@ -2217,9 +2244,10 @@ tr:last-child td{ border-bottom:none; }
         updateCompte(rcCompte.id, function(c){
           c.nom = rcNom; c.prenom = rcPrenom; c.email = rcEmail; c.telephone = rcTel;
           if(rcPrenom) c.nomAffiche = rcPrenom;
-        });
+        }, 'Coordonnées mises à jour.');
+      } else {
+        showToast('Impossible de trouver le compte référent à mettre à jour.');
       }
-      showToast('Coordonnées mises à jour.');
       return;
     }
     if(action==='save-self-infos'){
@@ -2227,8 +2255,7 @@ tr:last-child td{ border-bottom:none; }
       if(!selfEditableKeys.length) return;
       updateStagiaire(id, function(s){
         selfEditableKeys.forEach(function(k){ s[k] = getVal('self-'+k); });
-      });
-      showToast('Informations mises à jour.');
+      }, 'Informations mises à jour.');
       return;
     }
   }
@@ -2239,6 +2266,36 @@ tr:last-child td{ border-bottom:none; }
       if(el){ d.nom = getVal('doc-'+idx+'-nom'); d.lien = getVal('doc-'+idx+'-lien'); d.date = getVal('doc-'+idx+'-date'); }
     });
   }
+
+  function handlePhotoFile(file, stagiaireId){
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var img = new Image();
+      img.onload = function(){
+        var maxDim = 400;
+        var scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        var w = Math.max(1, Math.round(img.width * scale));
+        var h = Math.max(1, Math.round(img.height * scale));
+        var canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        var dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+        updateStagiaire(stagiaireId, function(s){ s.photo = dataUrl; }, 'Photo mise à jour.');
+      };
+      img.onerror = function(){ showToast('Impossible de lire cette image.'); };
+      img.src = e.target.result;
+    };
+    reader.onerror = function(){ showToast('Impossible de lire ce fichier.'); };
+    reader.readAsDataURL(file);
+  }
+  document.addEventListener('change', function(e){
+    var el = e.target.closest('[data-action="upload-photo"]');
+    if(!el) return;
+    var file = el.files && el.files[0];
+    handlePhotoFile(file, el.getAttribute('data-id'));
+  });
 
   document.addEventListener('click', onClick);
   document.addEventListener('keydown', function(e){
