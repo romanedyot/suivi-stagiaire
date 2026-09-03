@@ -159,11 +159,11 @@ tr:last-child td{ border-bottom:none; }
 .fiche-header h2{ font-size:1.4rem; }
 .fiche-header .meta{ color:var(--text-muted); font-size:0.86rem; margin-top:3px; }
 .fiche-header-right{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
-.photo-box{ width:56px; height:56px; border-radius:10px; overflow:hidden; background:var(--surface-alt); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.photo-box{ width:88px; height:88px; border-radius:14px; overflow:hidden; background:var(--surface-alt); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .photo-box img{ width:100%; height:100%; object-fit:cover; display:block; }
 .photo-box-editable{ cursor:pointer; }
 .photo-box-editable:hover{ border-color:var(--accent); }
-.photo-placeholder{ font-size:1.4rem; color:var(--text-muted); line-height:1; }
+.photo-placeholder{ font-size:2.2rem; color:var(--text-muted); line-height:1; }
 .move-formation{ display:flex; gap:8px; align-items:center; max-width:380px; margin:10px 0 20px; }
 .move-formation select{ flex:1; }
 .tabs{ display:flex; gap:4px; margin-bottom:18px; flex-wrap:wrap; border-bottom:1px solid var(--border); }
@@ -766,14 +766,6 @@ tr:last-child td{ border-bottom:none; }
       saveView(); render();
     });
   }
-  function findAccountByEmail(email){
-    email = (email||'').trim();
-    if(!email) return Promise.resolve(null);
-    return sb.rpc('rpc_find_by_email', { p_email: email }).then(function(res){
-      if(res.error || !res.data) return null;
-      return res.data;
-    }).catch(function(){ return null; });
-  }
   function applyPasswordReset(target, newPass){
     return sb.rpc('rpc_set_password', { p_kind: target.kind, p_id: target.id, p_new_password: newPass }).then(function(res){
       return !res.error && res.data===true;
@@ -827,33 +819,6 @@ tr:last-child td{ border-bottom:none; }
   }
 
   function renderLogin(){
-    if(view.forgotOpen){
-      var stage = view.forgotStage || 'email';
-      var body;
-      if(stage==='reset'){
-        body = '' +
-          '<h3>Nouveau mot de passe</h3>' +
-          '<p class="hint-banner">Dans une vraie plateforme, un e-mail avec un lien de réinitialisation vous serait envoyé. Dans cette démonstration, vous pouvez définir directement votre nouveau mot de passe ci-dessous.</p>' +
-          '<div class="field"><label for="forgot-new-pass">Nouveau mot de passe</label><input id="forgot-new-pass" type="password" autocomplete="new-password" /></div>' +
-          '<div class="field"><label for="forgot-new-pass2">Confirmer le nouveau mot de passe</label><input id="forgot-new-pass2" type="password" autocomplete="new-password" /></div>' +
-          '<button type="button" class="btn btn-primary" data-action="forgot-submit-reset" style="width:100%;">Définir le nouveau mot de passe</button>' +
-          '<button type="button" class="btn btn-ghost" data-action="toggle-forgot" style="width:100%;margin-top:8px;">← Retour à la connexion</button>';
-      } else {
-        body = '' +
-          '<h3>Mot de passe oublié</h3>' +
-          '<p class="hint-banner">Indiquez l’adresse e-mail associée à votre compte. Dans une vraie plateforme, un lien de réinitialisation vous serait envoyé par e-mail.</p>' +
-          '<div class="field"><label for="forgot-email">Adresse e-mail</label><input id="forgot-email" type="email" autocomplete="email" /></div>' +
-          '<button type="button" class="btn btn-primary" data-action="forgot-submit-email" style="width:100%;">Envoyer le lien de réinitialisation</button>' +
-          '<button type="button" class="btn btn-ghost" data-action="toggle-forgot" style="width:100%;margin-top:8px;">← Retour à la connexion</button>';
-      }
-      return '' +
-      '<div class="login-wrap">' +
-        '<img src="logo.png" alt="Dojo Academy" class="login-logo" onerror="this.style.display=\'none\'" />' +
-      '<h1 class="login-title">Suivi Alternance</h1>' +
-        '<p class="login-sub">Dojo Academy — centralisation du suivi pédagogique des stagiaires en alternance</p>' +
-        '<div class="login-card">' + body + '</div>' +
-      '</div>';
-    }
     return '' +
     '<div class="login-wrap">' +
       '<img src="logo.png" alt="Dojo Academy" class="login-logo" onerror="this.style.display=\'none\'" />' +
@@ -864,9 +829,8 @@ tr:last-child td{ border-bottom:none; }
         '<div class="field"><label for="login-identifiant">Identifiant (pseudo ou e-mail)</label><input id="login-identifiant" type="text" autocomplete="username" /></div>' +
         '<div class="field"><label for="login-motdepasse">Mot de passe</label><input id="login-motdepasse" type="password" autocomplete="current-password" /></div>' +
         '<button type="button" class="btn btn-primary" data-action="submit-login" style="width:100%;">Se connecter</button>' +
-        '<button type="button" class="btn btn-ghost" data-action="toggle-forgot" style="width:100%;margin-top:8px;">Mot de passe oublié ?</button>' +
       '</div>' +
-      '<p class="hint-banner" style="margin-top:20px;">Vous ne connaissez pas vos identifiants ? Contactez votre référent Dojo Academy.</p>' +
+      '<p class="hint-banner" style="margin-top:20px;">Vous ne connaissez pas vos identifiants, ou vous avez oublié votre mot de passe ? Contactez votre référent Dojo Academy.</p>' +
     '</div>';
   }
 
@@ -1895,40 +1859,6 @@ tr:last-child td{ border-bottom:none; }
       docEditBuffer = null; tasksEditBuffer = null; visiteEditBuffer = null;
       view = { screen:'login', role:null, profileId:null, selectedFormation:null, selectedId:null, tab:'infos', showAdd:false, detailPeriod:0 };
       saveView(); render(); return;
-    }
-    if(action==='toggle-forgot'){
-      view.forgotOpen = !view.forgotOpen; view.forgotStage = 'email'; view.forgotTarget = null;
-      saveView(); render(); return;
-    }
-    if(action==='forgot-submit-email'){
-      var forgotEmail = getVal('forgot-email');
-      findAccountByEmail(forgotEmail).then(function(foundAcc){
-        if(!foundAcc){ showToast('Aucun compte trouvé avec cette adresse e-mail.'); return; }
-        view.forgotTarget = foundAcc; view.forgotStage = 'reset';
-        saveView(); render();
-      });
-      return;
-    }
-    if(action==='forgot-submit-reset'){
-      var fnp = getVal('forgot-new-pass');
-      var fnp2 = getVal('forgot-new-pass2');
-      if(!fnp || fnp.length<4){ showToast('Le mot de passe doit contenir au moins 4 caractères.'); return; }
-      if(fnp!==fnp2){ showToast('Les deux mots de passe ne correspondent pas.'); return; }
-      var resetTarget = view.forgotTarget;
-      view.forgotOpen = false; view.forgotStage = 'email'; view.forgotTarget = null;
-      saveView(); render();
-      if(resetTarget){
-        applyPasswordReset(resetTarget, fnp).then(function(ok){
-          if(ok){
-            if(resetTarget.kind==='compte'){ var c=findCompte(resetTarget.id); if(c) c.motDePasseDefini=true; }
-            else { var s=findStagiaire(resetTarget.id); if(s) s.motDePasseDefiniStagiaire=true; }
-            showToast('Mot de passe mis à jour. Vous pouvez vous connecter.');
-          } else {
-            showToast('Le mot de passe n’a pas pu être mis à jour.');
-          }
-        });
-      }
-      return;
     }
     if(action==='submit-setup-password'){
       var snp = getVal('setup-new-pass');
