@@ -278,7 +278,7 @@ tr:last-child td{ border-bottom:none; }
   var SUPABASE_KEY = 'sb_publishable_kMhg82Vpgn4h72cqkMh6Mw_sMN8IC8m';
   var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   var JOURS = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
-  var FORMATIONS = ['BPJEPS FOAD','BPJEPS IJ','BPJEPS AF','BPJEPS INSEP','DEJEPS IJ','DEJEPS INSEP','DESJEPS PERF IJ','DESJEPS PERF INSEP','DESJEPS ASEC DSP'];
+  var FORMATIONS = ['BPJEPS FOAD','BPJEPS IJ','BPJEPS AF IJ','BPJEPS AF INSEP','BPJEPS INSEP','DEJEPS IJ','DEJEPS INSEP','DESJEPS PERF IJ','DESJEPS PERF INSEP','DESJEPS ASEC DSP'];
   var FICHE_TABS = [['infos','Mes infos'],['suivi-stagiaire','Mon suivi stagiaire'],['suivi-tuteur','Suivi tuteur'],['planning','Mon planning'],['documents','Mes documents'],['messages','Messagerie'],['referent-contact','Référent suivi pédagogique']];
   var VIEW_KEY = 'dojoSuiviView_v3';
 
@@ -430,7 +430,7 @@ tr:last-child td{ border-bottom:none; }
     ]}
   ];
   function ucBlocksForFormation(formation){
-    if(formation==='BPJEPS AF') return UC_BLOCKS_BPJEPS_AF;
+    if(formation==='BPJEPS AF IJ' || formation==='BPJEPS AF INSEP') return UC_BLOCKS_BPJEPS_AF;
     if(formation==='DEJEPS IJ' || formation==='DEJEPS INSEP') return UC_BLOCKS_DEJEPS;
     if(formation==='DESJEPS PERF IJ' || formation==='DESJEPS PERF INSEP') return UC_BLOCKS_DESJEPS_PERF;
     if(formation==='DESJEPS ASEC DSP') return UC_BLOCKS_DESJEPS_ASEC;
@@ -672,6 +672,19 @@ tr:last-child td{ border-bottom:none; }
       blocks.push({type:'p', label:'Difficultés rencontrées par le tuteur :', text: d.tuteurDifficultes});
       blocks.push({type:'p', label:'Autres remarques :', text: d.tuteurRemarques});
     });
+    return blocks;
+  }
+  function buildPlanningBlocks(st){
+    var blocks = [];
+    blocks.push({type:'meta', text:'Stagiaire : '+fullName(st)});
+    blocks.push({type:'meta', text:'Formation : '+st.formation});
+    blocks.push({type:'meta', text:'Structure d’accueil : '+st.structureNom});
+    blocks.push({type:'h2', text:'Planning en structure d’accueil'});
+    blocks.push({type:'table', headers:['Jour','Horaires','Activité en structure'], colFractions:[0.2,0.25,0.55],
+      rows: st.planningStructure.map(function(r){ return [r.jour, r.horaires||'—', r.activite||'—']; })});
+    blocks.push({type:'h2', text:'Planning à Dojo Academy'});
+    blocks.push({type:'table', headers:['Jour','Horaires','Module à Dojo Academy'], colFractions:[0.2,0.25,0.55],
+      rows: st.planningDojo.map(function(r){ return [r.jour, r.horaires||'—', r.module||'—']; })});
     return blocks;
   }
 
@@ -1369,7 +1382,10 @@ tr:last-child td{ border-bottom:none; }
     return '' +
     '<div class="planning-block"><h3>Planning en structure d’accueil</h3>' + planningTable(st.planningStructure, 'structure', canEdit) + '</div>' +
     '<div class="planning-block"><h3>Planning à Dojo Academy</h3>' + planningTable(st.planningDojo, 'dojo', canEdit) + '</div>' +
-    (canEdit ? '<button type="button" class="btn btn-primary" data-action="save-planning" data-id="'+esc(st.id)+'">Enregistrer le planning</button>' : '');
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">' +
+      (canEdit ? '<button type="button" class="btn btn-primary" data-action="save-planning" data-id="'+esc(st.id)+'">Enregistrer le planning</button>' : '') +
+      '<button type="button" class="btn btn-sm" data-action="print-planning" data-id="'+esc(st.id)+'">Télécharger (PDF)</button>' +
+    '</div>';
   }
 
   function renderDocumentsTab(st, editable){
@@ -2055,6 +2071,11 @@ tr:last-child td{ border-bottom:none; }
     if(action==='print-tuteur-sheet'){
       var stDlT = findStagiaire(id);
       if(stDlT) printSheet('Suivi_tuteur_'+slugify(fullName(stDlT)), buildTuteurSheetBlocks(stDlT), 'Feuille de suivi tuteur — '+fullName(stDlT));
+      return;
+    }
+    if(action==='print-planning'){
+      var stDlP = findStagiaire(id);
+      if(stDlP) printSheet('Planning_'+slugify(fullName(stDlP)), buildPlanningBlocks(stDlP), 'Planning — '+fullName(stDlP));
       return;
     }
     if(action==='new-visite'){
