@@ -523,6 +523,13 @@ tr:last-child td{ border-bottom:none; }
     }).catch(function(err){ syncStatus = 'error'; console.error(err); });
   }
 
+  function sortedStagiaires(list){
+    return (list || DATA.stagiaires).slice().sort(function(a,b){
+      var c = (a.nom||'').localeCompare(b.nom||'', 'fr', {sensitivity:'base'});
+      if(c!==0) return c;
+      return (a.prenom||'').localeCompare(b.prenom||'', 'fr', {sensitivity:'base'});
+    });
+  }
   function findStagiaire(id){
     for(var i=0;i<DATA.stagiaires.length;i++){ if(DATA.stagiaires[i].id===id) return DATA.stagiaires[i]; }
     return null;
@@ -548,7 +555,7 @@ tr:last-child td{ border-bottom:none; }
     return last.role!=='referent' && last.role!=='coordinateur';
   }
   function stagiairesWithUnread(){
-    return DATA.stagiaires.filter(hasUnreadMessages);
+    return sortedStagiaires().filter(hasUnreadMessages);
   }
   // Version côté stagiaire : nouveau message si le dernier du fil vient du référent/coordinateur.
   function hasUnreadMessagesForStagiaire(st){
@@ -579,7 +586,7 @@ tr:last-child td{ border-bottom:none; }
     var compte = findCompte(compteId);
     if(!compte || !compte.email) return [];
     var email = compte.email.toLowerCase();
-    return DATA.stagiaires.filter(function(s){ return s.tuteurEmail && s.tuteurEmail.toLowerCase()===email; });
+    return sortedStagiaires().filter(function(s){ return s.tuteurEmail && s.tuteurEmail.toLowerCase()===email; });
   }
   // Crée ou met à jour automatiquement les comptes tuteurs à partir des adresses
   // e-mail renseignées sur les fiches stagiaires : un tuteur qui encadre plusieurs
@@ -966,7 +973,7 @@ tr:last-child td{ border-bottom:none; }
   function renderFormationsHome(){
     var stats = globalStats();
     var priorityHtml = '';
-    var eleveList = DATA.stagiaires.filter(function(st){ var lp=lastFilledPeriod(st); return lp && lp.risque==='eleve'; });
+    var eleveList = sortedStagiaires().filter(function(st){ var lp=lastFilledPeriod(st); return lp && lp.risque==='eleve'; });
     if(eleveList.length){
       priorityHtml = '<div class="priority-box"><h3>Stagiaires à risque élevé de rupture</h3><ul>' +
         eleveList.map(function(st){ var lp=lastFilledPeriod(st); return '<li><strong>'+esc(fullName(st))+'</strong> — '+esc(st.structureNom)+'. Prochaine visite : '+fmtDate(lp.prochaineVisite)+'.</li>'; }).join('') +
@@ -1004,7 +1011,7 @@ tr:last-child td{ border-bottom:none; }
   }
 
   function renderStagiairesList(formation){
-    var list = DATA.stagiaires.filter(function(s){ return s.formation===formation; });
+    var list = sortedStagiaires().filter(function(s){ return s.formation===formation; });
     var rows = list.map(function(st){
       var lp = lastFilledPeriod(st);
       var risk = lp ? lp.risque : '';
