@@ -2255,6 +2255,20 @@ tr:last-child td{ border-bottom:none; }
     handlePhotoFile(file, el.getAttribute('data-id'));
   });
 
+  // Enregistrement automatique : dès qu'on quitte un champ d'un formulaire
+  // éditable, on déclenche le même bouton "Enregistrer" que celui déjà
+  // présent à l'écran — au cas où la personne oublierait de cliquer dessus.
+  var AUTOSAVE_ACTIONS = ['save-planning','save-detail-stagiaire','save-detail-tuteur','save-self-infos','save-infos','save-documents'];
+  document.addEventListener('focusout', function(e){
+    var t = e.target;
+    if(!t || (t.tagName!=='INPUT' && t.tagName!=='TEXTAREA' && t.tagName!=='SELECT')) return;
+    if(t.type==='password') return;
+    for(var i=0;i<AUTOSAVE_ACTIONS.length;i++){
+      var btn = document.querySelector('[data-action="'+AUTOSAVE_ACTIONS[i]+'"]');
+      if(btn){ btn.click(); return; }
+    }
+  });
+
   document.addEventListener('click', onClick);
   document.addEventListener('keydown', function(e){
     if(e.key==='Enter'){
