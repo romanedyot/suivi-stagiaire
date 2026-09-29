@@ -2258,15 +2258,24 @@ tr:last-child td{ border-bottom:none; }
   // Enregistrement automatique : dès qu'on quitte un champ d'un formulaire
   // éditable, on déclenche le même bouton "Enregistrer" que celui déjà
   // présent à l'écran — au cas où la personne oublierait de cliquer dessus.
-  var AUTOSAVE_ACTIONS = ['save-planning','save-detail-stagiaire','save-detail-tuteur','save-self-infos','save-infos','save-documents'];
+  function autosaveActionForField(id){
+    if(/^s-\d/.test(id)) return 'save-suivi';
+    if(/^p[SD]-\d/.test(id)) return 'save-planning';
+    if(/^(d|c1|c2|uc)-\d/.test(id)) return document.querySelector('[data-action="save-detail-stagiaire"]') ? 'save-detail-stagiaire' : 'save-detail-tuteur';
+    if(id.indexOf('self-')===0) return 'save-self-infos';
+    if(/^doc-\d/.test(id)) return 'save-documents';
+    if(id.indexOf('c-')===0) return 'save-infos';
+    if(id.indexOf('rc-')===0) return 'save-referent-contact';
+    return null;
+  }
   document.addEventListener('focusout', function(e){
     var t = e.target;
     if(!t || (t.tagName!=='INPUT' && t.tagName!=='TEXTAREA' && t.tagName!=='SELECT')) return;
     if(t.type==='password') return;
-    for(var i=0;i<AUTOSAVE_ACTIONS.length;i++){
-      var btn = document.querySelector('[data-action="'+AUTOSAVE_ACTIONS[i]+'"]');
-      if(btn){ btn.click(); return; }
-    }
+    var action = autosaveActionForField(t.id || '');
+    if(!action) return;
+    var btn = document.querySelector('[data-action="'+action+'"]');
+    if(btn) btn.click();
   });
 
   document.addEventListener('click', onClick);
