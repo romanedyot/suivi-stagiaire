@@ -1213,6 +1213,7 @@ tr:last-child td{ border-bottom:none; }
         '<div class="field"></div>' +
         '</div>' +
         '<div class="note-interne"><label for="s-'+idx+'-noteInterne">Note interne (visible par le référent et les coordinateurs uniquement)</label><textarea id="s-'+idx+'-noteInterne">'+esc(p.noteInterne)+'</textarea></div>' +
+        '<div class="note-interne"><label for="s-'+idx+'-remarqueFormateur">Remarques formateur(s)</label><textarea id="s-'+idx+'-remarqueFormateur">'+esc(p.remarqueFormateur)+'</textarea></div>' +
       '</div>';
     }
     return '<div class="period-card"><h3>'+esc(p.periode)+' <span class="pill '+riskClass(p.risque)+'" style="margin-left:8px;">'+riskLabel(p.risque)+'</span></h3>' +
@@ -2028,6 +2029,7 @@ tr:last-child td{ border-bottom:none; }
           p.prochaineVisite = getVal('s-'+idx+'-prochaineVisite');
           p.risque = getVal('s-'+idx+'-risque');
           p.noteInterne = getVal('s-'+idx+'-noteInterne');
+          p.remarqueFormateur = getVal('s-'+idx+'-remarqueFormateur');
         });
       }); return;
     }
