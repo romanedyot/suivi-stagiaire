@@ -619,12 +619,6 @@ tr:last-child td{ border-bottom:none; }
     if(!p || !n) return '';
     return p+'.'+n;
   }
-  function pseudoFromFullName(full){
-    var parts = (full||'').trim().split(/\s+/);
-    if(parts.length<2) return '';
-    return pseudoFromName(parts[0], parts.slice(1).join(' '));
-  }
-
   // ---------- export des feuilles de suivi (impression) ----------
   function slugify(s){
     return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'stagiaire';
@@ -1090,11 +1084,10 @@ tr:last-child td{ border-bottom:none; }
       var pwdNote = compte.motDePasseDefini===false
         ? ', avec le mot de passe provisoire <strong>Provisoire2026!</strong> qu’il n’a pas encore changé.'
         : ', avec le même mot de passe que ses autres stagiaires suivis ici (pour des raisons de sécurité, ce mot de passe n’est plus affiché ici une fois défini par le tuteur — utilisez « Mot de passe oublié » sur l’écran de connexion si besoin).';
-      return '<p class="hint-banner">Ce tuteur a déjà un accès (identifiant : <strong>'+esc(compte.pseudo)+'</strong>). Ce stagiaire apparaîtra automatiquement dans son espace, sous un nouvel onglet à son nom'+pwdNote+' Pour retirer son accès à ce stagiaire, videz ce champ e-mail et enregistrez ; si c’était son dernier stagiaire suivi, son compte sera automatiquement supprimé.</p>' +
-        (compte.motDePasseDefini===false ? mailtoInviteHtml(compte.email, compte.nomAffiche, compte.pseudo, 'Provisoire2026!', 'tuteur') : '');
+      return '<p class="hint-banner">Ce tuteur a déjà un accès (identifiant : <strong>'+esc(compte.email)+'</strong>). Ce stagiaire apparaîtra automatiquement dans son espace, sous un nouvel onglet à son nom'+pwdNote+' Pour retirer son accès à ce stagiaire, videz ce champ e-mail et enregistrez ; si c’était son dernier stagiaire suivi, son compte sera automatiquement supprimé.</p>' +
+        (compte.motDePasseDefini===false ? mailtoInviteHtml(compte.email, compte.nomAffiche, compte.email, 'Provisoire2026!', 'tuteur') : '');
     }
-    var pseudoPreview = pseudoFromFullName(v.tuteurNom);
-    return '<p class="hint-banner">Nouvel accès tuteur : à l’enregistrement, un compte sera créé avec l’identifiant <strong>'+esc(pseudoPreview || '(généré à partir du nom une fois enregistré)')+'</strong> et le mot de passe provisoire <strong>Provisoire2026!</strong> ; le tuteur en choisira un nouveau à sa première connexion.</p>';
+    return '<p class="hint-banner">Nouvel accès tuteur : à l’enregistrement, un compte sera créé pour <strong>'+esc(email)+'</strong>, avec le mot de passe provisoire <strong>Provisoire2026!</strong> ; le tuteur se connectera avec cette adresse e-mail et choisira un nouveau mot de passe à sa première connexion.</p>';
   }
 
   function renderFiche(st){
