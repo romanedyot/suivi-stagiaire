@@ -194,6 +194,12 @@ tr:last-child td{ border-bottom:none; }
 .rating-row .crit-label{ flex:1; font-size:0.88rem; }
 .rating-row select{ width:170px; flex-shrink:0; }
 .rating-row .rating-value{ width:170px; flex-shrink:0; font-size:0.88rem; color:var(--text-muted); }
+.lvl-debutant{ background:#F8C9C9 !important; color:#7A1212 !important; border-color:#E58F8F !important; }
+.lvl-initie{ background:#FDD9B0 !important; color:#7A3E05 !important; border-color:#EBB36F !important; }
+.lvl-debrouille{ background:#FFF1A8 !important; color:#6B5300 !important; border-color:#E6D167 !important; }
+.lvl-confirme{ background:#CDEFC2 !important; color:#245A14 !important; border-color:#8FCB7D !important; }
+.lvl-expert{ background:#7FD18C !important; color:#0B3D1B !important; border-color:#4FB162 !important; font-weight:600; }
+.rating-row .rating-value[class*="lvl-"]{ padding:6px 10px; border:1px solid; border-radius:8px; }
 @media (max-width:560px){
   .rating-row{ flex-direction:column; align-items:stretch; }
   .rating-row select, .rating-row .rating-value{ width:100%; }
@@ -262,6 +268,7 @@ tr:last-child td{ border-bottom:none; }
 .print-area table{ width:100%; border-collapse:collapse; margin-bottom:12px; font-size:0.78rem; }
 .print-area th,.print-area td{ border:1px solid #999; padding:5px 7px; text-align:left; vertical-align:top; color:#111; }
 .print-area th{ background:#eee; }
+.print-area td.lvl-debutant, .print-area td.lvl-initie, .print-area td.lvl-debrouille, .print-area td.lvl-confirme, .print-area td.lvl-expert{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 @media print{
   body > *:not(.print-area){ display:none !important; }
   .print-area{ display:block !important; }
@@ -646,13 +653,11 @@ tr:last-child td{ border-bottom:none; }
       blocks.push({type:'h3', text:'Critères'});
       blocks.push({type:'table', headers:['Critère','Note (0 à 4)'], colFractions:[0.78,0.22],
         rows: CRIT1.map(function(c){ return [c[1], d.criteres1[c[0]] || '—']; })});
-      blocks.push({type:'h3', text:'Grille complémentaire'});
-      blocks.push({type:'table', headers:['Critère','Note (0 à 4)'], colFractions:[0.78,0.22],
-        rows: CRIT2.map(function(c){ return [c[1], d.criteres2[c[0]] || '—']; })});
       blocks.push({type:'h3', text:'Référentiel de compétences'});
       ucBlocksForFormation(st.formation).forEach(function(b){
         blocks.push({type:'p', label:b.titre});
         blocks.push({type:'table', headers:['Compétence','Niveau'], colFractions:[0.74,0.26],
+          levelClasses: b.items.map(function(it){ return lvlClass(d.uc[it[0]]); }),
           rows: b.items.map(function(it){ return [it[1], ucLevelLabel(d.uc[it[0]])]; })});
       });
     });
@@ -702,7 +707,9 @@ tr:last-child td{ border-bottom:none; }
       }
       else if(b.type==='table'){
         html += '<table><thead><tr>' + b.headers.map(function(h){ return '<th>'+esc(h)+'</th>'; }).join('') + '</tr></thead><tbody>' +
-          b.rows.map(function(r){ return '<tr>'+r.map(function(c){ return '<td>'+esc(c)+'</td>'; }).join('')+'</tr>'; }).join('') +
+          b.rows.map(function(r, ri){ return '<tr>'+r.map(function(c, ci){
+            var cls = (b.levelClasses && ci===r.length-1 && b.levelClasses[ri]) ? ' class="'+b.levelClasses[ri]+'"' : '';
+            return '<td'+cls+'>'+esc(c)+'</td>'; }).join('')+'</tr>'; }).join('') +
         '</tbody></table>';
       }
     });
@@ -1239,16 +1246,20 @@ tr:last-child td{ border-bottom:none; }
     return '<div class="rating-list"><div class="rating-head"><span>Critère</span><span>Note</span></div>'+rows2+'</div>';
   }
 
+  function lvlClass(v){
+    for(var i=1;i<UC_LEVELS.length;i++){ if(UC_LEVELS[i][0]===v) return 'lvl-'+v; }
+    return '';
+  }
   function ucBlockHtml(block, values, idx, editable){
     var rows;
     if(editable){
       rows = block.items.map(function(it){
-        return '<div class="rating-row"><div class="crit-label">'+esc(it[1])+'</div><select id="uc-'+idx+'-'+it[0]+'">' +
+        return '<div class="rating-row"><div class="crit-label">'+esc(it[1])+'</div><select class="uc-level '+lvlClass(values[it[0]])+'" id="uc-'+idx+'-'+it[0]+'">' +
           UC_LEVELS.map(function(l){ return '<option value="'+l[0]+'" '+(values[it[0]]===l[0]?'selected':'')+'>'+l[1]+'</option>'; }).join('') +
         '</select></div>';
       }).join('');
     } else {
-      rows = block.items.map(function(it){ return '<div class="rating-row"><div class="crit-label">'+esc(it[1])+'</div><div class="rating-value">'+ucLevelLabel(values[it[0]])+'</div></div>'; }).join('');
+      rows = block.items.map(function(it){ return '<div class="rating-row"><div class="crit-label">'+esc(it[1])+'</div><div class="rating-value '+lvlClass(values[it[0]])+'">'+ucLevelLabel(values[it[0]])+'</div></div>'; }).join('');
     }
     return '<h4 class="suivi-subtitle">'+esc(block.titre)+'</h4><div class="rating-list"><div class="rating-head"><span>Compétence</span><span>Niveau</span></div>'+rows+'</div>';
   }
@@ -1310,8 +1321,6 @@ tr:last-child td{ border-bottom:none; }
     html += textBlock(idx,'remarquesStagiaire', d.remarquesStagiaire, 'Autres remarques', editable);
     html += '<h4 class="suivi-subtitle">Critères</h4>';
     html += critGrid(CRIT1, d.criteres1, 'c1', idx, editable);
-    html += '<h4 class="suivi-subtitle">Grille complémentaire</h4>';
-    html += critGrid(CRIT2, d.criteres2, 'c2', idx, editable);
     html += '<h4 class="suivi-subtitle">Référentiel de compétences</h4>';
     html += ucBlocksForFormation(st.formation).map(function(b){ return ucBlockHtml(b, d.uc, idx, editable); }).join('');
     if(editable){
@@ -2049,7 +2058,6 @@ tr:last-child td{ border-bottom:none; }
         d.difficultesStagiaire = getVal('d-'+pidxS+'-difficultesStagiaire');
         d.remarquesStagiaire = getVal('d-'+pidxS+'-remarquesStagiaire');
         CRIT1.forEach(function(c){ d.criteres1[c[0]] = getVal('c1-'+pidxS+'-'+c[0]); });
-        CRIT2.forEach(function(c){ d.criteres2[c[0]] = getVal('c2-'+pidxS+'-'+c[0]); });
         ucBlocksForFormation(s.formation).forEach(function(b){ b.items.forEach(function(it){ d.uc[it[0]] = getVal('uc-'+pidxS+'-'+it[0]); }); });
       });
       return;
@@ -2243,6 +2251,12 @@ tr:last-child td{ border-bottom:none; }
     reader.onerror = function(){ showToast('Impossible de lire ce fichier.'); };
     reader.readAsDataURL(file);
   }
+  document.addEventListener('change', function(e){
+    var sel = e.target;
+    if(sel && sel.classList && sel.classList.contains('uc-level')){
+      sel.className = 'uc-level ' + lvlClass(sel.value);
+    }
+  });
   document.addEventListener('change', function(e){
     var el = e.target.closest('[data-action="upload-photo"]');
     if(!el) return;
