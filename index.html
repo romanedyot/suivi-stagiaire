@@ -262,6 +262,8 @@ tr:last-child td{ border-bottom:none; }
 .print-area h1{ font-size:1.3rem; margin-bottom:10px; color:#000; }
 .print-area h2{ font-size:1.05rem; margin:18px 0 6px; color:#000; }
 .print-area h3{ font-size:0.92rem; margin:14px 0 6px; color:#000; }
+.print-area .print-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:6px; }
+.print-area .print-photo{ width:3cm; height:4cm; object-fit:cover; border:1px solid #999; flex-shrink:0; }
 .print-area .meta-line{ font-size:0.85rem; color:#111; margin-bottom:2px; }
 .print-area .p-label{ font-weight:600; font-size:0.85rem; color:#000; margin:6px 0 2px; }
 .print-area p{ font-size:0.85rem; color:#111; white-space:pre-wrap; margin:0 0 8px; }
@@ -634,6 +636,7 @@ tr:last-child td{ border-bottom:none; }
   // -- contenu structure des feuilles --
   function buildStagiaireSheetBlocks(st){
     var blocks = [];
+    if(st.photo) blocks.push({type:'photo', src:st.photo});
     blocks.push({type:'meta', text:'Stagiaire : '+fullName(st)});
     blocks.push({type:'meta', text:'Formation : '+st.formation});
     blocks.push({type:'meta', text:'Structure d’accueil : '+st.structureNom});
@@ -696,7 +699,16 @@ tr:last-child td{ border-bottom:none; }
 
   // -- aperçu imprimable (pas de téléchargement : la page reste partageable par lien) --
   function blocksToPrintHtml(title, blocks){
-    var html = '<h1>'+esc(title)+'</h1>';
+    var html = '';
+    var photoBlock = null;
+    blocks = blocks.filter(function(b){ if(b.type==='photo'){ photoBlock = b; return false; } return true; });
+    if(photoBlock && photoBlock.src){
+      var headMetas = '';
+      while(blocks.length && blocks[0].type==='meta'){ headMetas += '<div class="meta-line">'+esc(blocks[0].text)+'</div>'; blocks = blocks.slice(1); }
+      html += '<div class="print-head"><div><h1>'+esc(title)+'</h1>'+headMetas+'</div><img class="print-photo" src="'+esc(photoBlock.src)+'" alt="" /></div>';
+    } else {
+      html += '<h1>'+esc(title)+'</h1>';
+    }
     blocks.forEach(function(b){
       if(b.type==='meta'){ html += '<div class="meta-line">'+esc(b.text)+'</div>'; }
       else if(b.type==='h2'){ html += '<h2>'+esc(b.text)+'</h2>'; }
