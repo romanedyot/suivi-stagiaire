@@ -1400,11 +1400,12 @@ tr:last-child td{ border-bottom:none; }
     var quickCards = st.suivis.map(function(p,idx){ return periodQuickCard(p, idx, editable); }).join('');
     var dp = view.detailPeriod || 0;
     var canEditStagiaire = editable || view.role==='stagiaire';
+    var showQuick = view.role!=='stagiaire' && view.role!=='tuteur';
     return '' +
-      '<h3 class="suivi-section-title">Suivi rapide</h3>' +
-      quickCards +
-      (editable ? '<button type="button" class="btn btn-primary" data-action="save-suivi" data-id="'+esc(st.id)+'">Enregistrer le suivi rapide</button>' : '') +
-      '<div class="suivi-tab-head" style="margin-top:32px;"><h3 class="suivi-section-title" style="margin:0;">Feuille de suivi stagiaire</h3>' +
+      (showQuick ? '<h3 class="suivi-section-title">Suivi rapide</h3>' +
+        quickCards +
+        (editable ? '<button type="button" class="btn btn-primary" data-action="save-suivi" data-id="'+esc(st.id)+'">Enregistrer le suivi rapide</button>' : '') : '') +
+      '<div class="suivi-tab-head" style="margin-top:'+(showQuick ? '32px' : '0')+';"><h3 class="suivi-section-title" style="margin:0;">Feuille de suivi stagiaire</h3>' +
       '<button type="button" class="btn btn-sm" data-action="print-stagiaire-sheet" data-id="'+esc(st.id)+'">Télécharger la période '+(dp+1)+' (PDF)</button></div>' +
       '<p class="hint-banner">Cette partie est renseignée par le/la stagiaire (avec les tâches réalisées, son propre ressenti sur la période, les grilles de critères et le référentiel de compétences).</p>' +
       '<div class="tabs" style="margin-bottom:16px;">'+periodSubTabs(dp)+'</div>' +
