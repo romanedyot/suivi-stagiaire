@@ -199,6 +199,11 @@ tr:last-child td{ border-bottom:none; }
 .lvl-debrouille{ background:#FFF1A8 !important; color:#6B5300 !important; border-color:#E6D167 !important; }
 .lvl-confirme{ background:#CDEFC2 !important; color:#245A14 !important; border-color:#8FCB7D !important; }
 .lvl-expert{ background:#7FD18C !important; color:#0B3D1B !important; border-color:#4FB162 !important; font-weight:600; }
+.sheet-status{ display:flex; align-items:center; gap:4px; white-space:nowrap; }
+.sheet-status + .sheet-status{ margin-top:3px; }
+.sheet-lbl{ font-size:0.68rem; text-transform:uppercase; letter-spacing:0.03em; color:var(--text-muted); width:62px; flex-shrink:0; }
+.sheet-pill{ font-size:0.7rem; font-weight:600; padding:2px 8px; border-radius:999px; background:var(--surface-alt); color:var(--text-muted); border:1px solid var(--border); }
+.sheet-pill.done{ background:#CDEFC2; color:#245A14; border-color:#8FCB7D; }
 .rating-row .rating-value[class*="lvl-"]{ padding:6px 10px; border:1px solid; border-radius:8px; }
 @media (max-width:560px){
   .rating-row{ flex-direction:column; align-items:stretch; }
@@ -1035,6 +1040,27 @@ tr:last-child td{ border-bottom:none; }
     '<div class="formation-grid">'+cards+'</div>';
   }
 
+  function hasValue(obj){
+    if(!obj) return false;
+    return Object.keys(obj).some(function(k){ return obj[k] !== '' && obj[k] != null; });
+  }
+  function stagiaireSheetFilled(d){
+    return !!(d && ((d.taches && d.taches.length) || d.competencesAcquisesStagiaire || d.difficultesStagiaire || d.remarquesStagiaire || hasValue(d.criteres1) || hasValue(d.uc)));
+  }
+  function tuteurSheetFilled(d){
+    return !!(d && (d.tuteurCompetencesAcquises || d.tuteurDifficultes || d.tuteurRemarques || hasValue(d.criteresTuteur)));
+  }
+  function sheetStatusHtml(st){
+    function row(label, test){
+      return '<div class="sheet-status"><span class="sheet-lbl">'+label+'</span>' +
+        [0,1,2].map(function(i){
+          var done = test(st.evaluations[i]);
+          return '<span class="sheet-pill '+(done?'done':'')+'" title="'+esc(label)+' — '+esc(TRIMESTRES[i])+' : '+(done?'remplie':'non remplie')+'">P'+(i+1)+'</span>';
+        }).join('') + '</div>';
+    }
+    return row('Stagiaire', stagiaireSheetFilled) + row('Tuteur', tuteurSheetFilled);
+  }
+
   function renderStagiairesList(formation){
     var list = sortedStagiaires().filter(function(s){ return s.formation===formation; });
     var rows = list.map(function(st){
@@ -1046,6 +1072,7 @@ tr:last-child td{ border-bottom:none; }
         '<td>'+esc(st.structureNom)+'</td>' +
         '<td>'+esc(st.tuteurNom)+'</td>' +
         '<td><span class="pill '+riskClass(risk)+'">'+riskLabel(risk)+'</span></td>' +
+        '<td>'+sheetStatusHtml(st)+'</td>' +
         '<td>'+fmtDate(next)+'</td>' +
         '<td><div class="contact-links"><a href="tel:'+esc(st.telephone)+'">Tél</a><a href="mailto:'+esc(st.email)+'">Mail</a></div></td>' +
       '</tr>';
@@ -1062,7 +1089,7 @@ tr:last-child td{ border-bottom:none; }
     '<button type="button" class="btn btn-ghost" data-action="back-to-formations">← Retour aux formations</button>' +
     '<div class="section-head" style="margin-top:14px;"><h2 style="font-size:1.15rem;">'+esc(formation)+'</h2><button type="button" class="btn btn-primary" data-action="toggle-add-form">+ Ajouter un stagiaire</button></div>' +
     addForm +
-    (list.length ? '<div class="table-wrap"><table><thead><tr><th>Stagiaire</th><th>Structure</th><th>Tuteur</th><th>Risque</th><th>Prochaine visite</th><th>Contact</th></tr></thead><tbody>'+rows+'</tbody></table></div>' : '<div class="empty-state">Aucun stagiaire dans cette formation pour le moment.</div>');
+    (list.length ? '<div class="table-wrap"><table><thead><tr><th>Stagiaire</th><th>Structure</th><th>Tuteur</th><th>Risque</th><th>Feuilles remplies</th><th>Prochaine visite</th><th>Contact</th></tr></thead><tbody>'+rows+'</tbody></table></div>' : '<div class="empty-state">Aucun stagiaire dans cette formation pour le moment.</div>');
   }
 
   function mailtoInviteHtml(email, prenom, identifiant, motDePasse, roleLabel){
