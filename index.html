@@ -639,7 +639,7 @@ tr:last-child td{ border-bottom:none; }
   }
 
   // -- contenu structure des feuilles --
-  function buildStagiaireSheetBlocks(st){
+  function buildStagiaireSheetBlocks(st, onlyIdx){
     var blocks = [];
     if(st.photo) blocks.push({type:'photo', src:st.photo});
     blocks.push({type:'meta', text:'Stagiaire : '+fullName(st)});
@@ -647,6 +647,7 @@ tr:last-child td{ border-bottom:none; }
     blocks.push({type:'meta', text:'Tuteur : '+(st.tuteurNom||'—')});
     blocks.push({type:'meta', text:'Structure d’accueil : '+st.structureNom});
     st.evaluations.forEach(function(d, idx){
+      if(onlyIdx!=null && idx!==onlyIdx) return;
       var periodeLabel = periodeTitle(idx, st.suivis[idx] && st.suivis[idx].periode);
       blocks.push({type:'h2', text:periodeLabel});
       blocks.push({type:'h3', text:'Types de tâches réalisées'});
@@ -673,12 +674,13 @@ tr:last-child td{ border-bottom:none; }
     });
     return blocks;
   }
-  function buildTuteurSheetBlocks(st){
+  function buildTuteurSheetBlocks(st, onlyIdx){
     var blocks = [];
     blocks.push({type:'meta', text:'Stagiaire : '+fullName(st)});
     blocks.push({type:'meta', text:'Tuteur : '+(st.tuteurNom||'—')});
     blocks.push({type:'meta', text:'Structure d’accueil : '+st.structureNom});
     st.evaluations.forEach(function(d, idx){
+      if(onlyIdx!=null && idx!==onlyIdx) return;
       var periodeLabel = periodeTitle(idx, st.suivis[idx] && st.suivis[idx].periode);
       blocks.push({type:'h2', text:periodeLabel});
       blocks.push({type:'p', label:'Compétences acquises (évaluation du tuteur) :', text: d.tuteurCompetencesAcquises});
@@ -1376,7 +1378,7 @@ tr:last-child td{ border-bottom:none; }
       quickCards +
       (editable ? '<button type="button" class="btn btn-primary" data-action="save-suivi" data-id="'+esc(st.id)+'">Enregistrer le suivi rapide</button>' : '') +
       '<div class="suivi-tab-head" style="margin-top:32px;"><h3 class="suivi-section-title" style="margin:0;">Feuille de suivi stagiaire</h3>' +
-      '<button type="button" class="btn btn-sm" data-action="print-stagiaire-sheet" data-id="'+esc(st.id)+'">Télécharger (PDF)</button></div>' +
+      '<button type="button" class="btn btn-sm" data-action="print-stagiaire-sheet" data-id="'+esc(st.id)+'">Télécharger la période '+(dp+1)+' (PDF)</button></div>' +
       '<p class="hint-banner">Cette partie est renseignée par le/la stagiaire (avec les tâches réalisées, son propre ressenti sur la période, les grilles de critères et le référentiel de compétences).</p>' +
       '<div class="tabs" style="margin-bottom:16px;">'+periodSubTabs(dp)+'</div>' +
       renderDetailPeriodStagiaire(st, dp, canEditStagiaire);
@@ -1387,7 +1389,7 @@ tr:last-child td{ border-bottom:none; }
     var canEditTuteur = editable || view.role==='tuteur';
     return '' +
       '<div class="suivi-tab-head"><h3 class="suivi-section-title" style="margin:0;">Feuille de suivi tuteur</h3>' +
-      '<button type="button" class="btn btn-sm" data-action="print-tuteur-sheet" data-id="'+esc(st.id)+'">Télécharger (PDF)</button></div>' +
+      '<button type="button" class="btn btn-sm" data-action="print-tuteur-sheet" data-id="'+esc(st.id)+'">Télécharger la période '+(dp+1)+' (PDF)</button></div>' +
       '<p class="hint-banner">Cette partie est renseignée par le tuteur en structure (évaluation et grilles de critères).</p>' +
       '<div class="tabs" style="margin-bottom:16px;">'+periodSubTabs(dp)+'</div>' +
       renderDetailPeriodTuteur(st, dp, canEditTuteur);
@@ -2100,12 +2102,14 @@ tr:last-child td{ border-bottom:none; }
     }
     if(action==='print-stagiaire-sheet'){
       var stDlS = findStagiaire(id);
-      if(stDlS) printSheet('Suivi_stagiaire_'+slugify(fullName(stDlS)), buildStagiaireSheetBlocks(stDlS), 'Feuille de suivi stagiaire — '+fullName(stDlS));
+      var piS = view.detailPeriod || 0;
+      if(stDlS) printSheet('Suivi_stagiaire_'+slugify(fullName(stDlS))+'_P'+(piS+1), buildStagiaireSheetBlocks(stDlS, piS), 'Feuille de suivi stagiaire — '+fullName(stDlS));
       return;
     }
     if(action==='print-tuteur-sheet'){
       var stDlT = findStagiaire(id);
-      if(stDlT) printSheet('Suivi_tuteur_'+slugify(fullName(stDlT)), buildTuteurSheetBlocks(stDlT), 'Feuille de suivi tuteur — '+fullName(stDlT));
+      var piT = view.detailPeriod || 0;
+      if(stDlT) printSheet('Suivi_tuteur_'+slugify(fullName(stDlT))+'_P'+(piT+1), buildTuteurSheetBlocks(stDlT, piT), 'Feuille de suivi tuteur — '+fullName(stDlT));
       return;
     }
     if(action==='print-planning'){
