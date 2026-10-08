@@ -633,15 +633,21 @@ tr:last-child td{ border-bottom:none; }
     return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'stagiaire';
   }
 
+  var TRIMESTRES = ['1er trimestre','2ème trimestre','3ème trimestre'];
+  function periodeTitle(idx, stored){
+    return (stored || ('Période '+(idx+1))) + ' ('+TRIMESTRES[idx]+')';
+  }
+
   // -- contenu structure des feuilles --
   function buildStagiaireSheetBlocks(st){
     var blocks = [];
     if(st.photo) blocks.push({type:'photo', src:st.photo});
     blocks.push({type:'meta', text:'Stagiaire : '+fullName(st)});
     blocks.push({type:'meta', text:'Formation : '+st.formation});
+    blocks.push({type:'meta', text:'Tuteur : '+(st.tuteurNom||'—')});
     blocks.push({type:'meta', text:'Structure d’accueil : '+st.structureNom});
     st.evaluations.forEach(function(d, idx){
-      var periodeLabel = (st.suivis[idx] && st.suivis[idx].periode) ? st.suivis[idx].periode : ('Période '+(idx+1));
+      var periodeLabel = periodeTitle(idx, st.suivis[idx] && st.suivis[idx].periode);
       blocks.push({type:'h2', text:periodeLabel});
       blocks.push({type:'h3', text:'Types de tâches réalisées'});
       if(d.taches && d.taches.length){
@@ -655,6 +661,7 @@ tr:last-child td{ border-bottom:none; }
       blocks.push({type:'p', label:'Autres remarques :', text: d.remarquesStagiaire});
       blocks.push({type:'h3', text:'Critères'});
       blocks.push({type:'table', headers:['Critère','Note (0 à 4)'], colFractions:[0.78,0.22],
+        levelClasses: CRIT1.map(function(c){ return critClass(d.criteres1[c[0]]); }),
         rows: CRIT1.map(function(c){ return [c[1], d.criteres1[c[0]] || '—']; })});
       blocks.push({type:'h3', text:'Référentiel de compétences'});
       ucBlocksForFormation(st.formation).forEach(function(b){
@@ -672,12 +679,13 @@ tr:last-child td{ border-bottom:none; }
     blocks.push({type:'meta', text:'Tuteur : '+(st.tuteurNom||'—')});
     blocks.push({type:'meta', text:'Structure d’accueil : '+st.structureNom});
     st.evaluations.forEach(function(d, idx){
-      var periodeLabel = (st.suivis[idx] && st.suivis[idx].periode) ? st.suivis[idx].periode : ('Période '+(idx+1));
+      var periodeLabel = periodeTitle(idx, st.suivis[idx] && st.suivis[idx].periode);
       blocks.push({type:'h2', text:periodeLabel});
       blocks.push({type:'p', label:'Compétences acquises (évaluation du tuteur) :', text: d.tuteurCompetencesAcquises});
       blocks.push({type:'h3', text:'Critères'});
       blocks.push({type:'table', headers:['Critère','Note (0 à 4)'], colFractions:[0.78,0.22],
-        rows: CRIT1.map(function(c){ return [c[1], d.criteres1[c[0]] || '—']; })});
+        levelClasses: CRIT1.map(function(c){ return critClass(d.criteresTuteur && d.criteresTuteur[c[0]]); }),
+        rows: CRIT1.map(function(c){ return [c[1], (d.criteresTuteur && d.criteresTuteur[c[0]]) || '—']; })});
       blocks.push({type:'p', label:'Difficultés rencontrées par le tuteur :', text: d.tuteurDifficultes});
       blocks.push({type:'p', label:'Autres remarques :', text: d.tuteurRemarques});
     });
@@ -685,8 +693,10 @@ tr:last-child td{ border-bottom:none; }
   }
   function buildPlanningBlocks(st){
     var blocks = [];
+    if(st.photo) blocks.push({type:'photo', src:st.photo});
     blocks.push({type:'meta', text:'Stagiaire : '+fullName(st)});
     blocks.push({type:'meta', text:'Formation : '+st.formation});
+    blocks.push({type:'meta', text:'Tuteur : '+(st.tuteurNom||'—')});
     blocks.push({type:'meta', text:'Structure d’accueil : '+st.structureNom});
     blocks.push({type:'h2', text:'Planning en structure d’accueil'});
     blocks.push({type:'table', headers:['Jour','Horaires','Activité en structure'], colFractions:[0.2,0.25,0.55],
@@ -745,7 +755,7 @@ tr:last-child td{ border-bottom:none; }
     return {
       periode:'Période '+(i+1), taches:[],
       competencesAcquisesStagiaire:'', difficultesStagiaire:'', remarquesStagiaire:'',
-      tuteurCompetencesAcquises:'', criteres1: emptyCritSet(CRIT1),
+      tuteurCompetencesAcquises:'', criteres1: emptyCritSet(CRIT1), criteresTuteur: emptyCritSet(CRIT1),
       tuteurDifficultes:'', tuteurRemarques:'', criteres2: emptyCritSet(CRIT2),
       uc: uc
     };
@@ -1216,7 +1226,7 @@ tr:last-child td{ border-bottom:none; }
   // ---------- Mon suivi : bloc rapide (référent) ----------
   function periodQuickCard(p, idx, editable){
     if(editable){
-      return '<div class="period-card"><h3>'+esc(p.periode)+'</h3><div class="period-grid">' +
+      return '<div class="period-card"><h3>'+esc(periodeTitle(idx, p.periode))+'</h3><div class="period-grid">' +
         '<div class="field"><label for="s-'+idx+'-dateVisite">Date de la visite</label><input type="date" id="s-'+idx+'-dateVisite" value="'+esc(p.dateVisite)+'" /></div>' +
         '<div class="field"><label for="s-'+idx+'-prochaineVisite">Prochaine visite prévue</label><input type="date" id="s-'+idx+'-prochaineVisite" value="'+esc(p.prochaineVisite)+'" /></div>' +
         '<div class="field"><label for="s-'+idx+'-risque">Niveau de risque de rupture</label><select id="s-'+idx+'-risque">' +
@@ -1228,7 +1238,7 @@ tr:last-child td{ border-bottom:none; }
         '<div class="note-interne"><label for="s-'+idx+'-remarqueFormateur">Remarques formateur(s)</label><textarea id="s-'+idx+'-remarqueFormateur">'+esc(p.remarqueFormateur)+'</textarea></div>' +
       '</div>';
     }
-    return '<div class="period-card"><h3>'+esc(p.periode)+' <span class="pill '+riskClass(p.risque)+'" style="margin-left:8px;">'+riskLabel(p.risque)+'</span></h3>' +
+    return '<div class="period-card"><h3>'+esc(periodeTitle(idx, p.periode))+' <span class="pill '+riskClass(p.risque)+'" style="margin-left:8px;">'+riskLabel(p.risque)+'</span></h3>' +
       '<div class="readonly-grid">' +
       roItem('Date de la visite', fmtDate(p.dateVisite)) + roItem('Prochaine visite prévue', fmtDate(p.prochaineVisite)) +
       '</div></div>';
@@ -1248,13 +1258,13 @@ tr:last-child td{ border-bottom:none; }
     // ancestor's scroll box.
     if(editable){
       var rows = list.map(function(c){
-        return '<div class="rating-row"><div class="crit-label">'+c[1]+'</div><select id="'+idPrefix+'-'+idx+'-'+c[0]+'">' +
+        return '<div class="rating-row"><div class="crit-label">'+c[1]+'</div><select class="crit-level '+critClass(values[c[0]])+'" id="'+idPrefix+'-'+idx+'-'+c[0]+'">' +
           CRIT_LEVELS.map(function(l){ return '<option value="'+l[0]+'" '+(values[c[0]]===l[0]?'selected':'')+'>'+l[1]+'</option>'; }).join('') +
         '</select></div>';
       }).join('');
       return '<div class="rating-list"><div class="rating-head"><span>Critère</span><span>Note (0 à 4)</span></div>'+rows+'</div>';
     }
-    var rows2 = list.map(function(c){ return '<div class="rating-row"><div class="crit-label">'+c[1]+'</div><div class="rating-value">'+(values[c[0]] ? values[c[0]] : '—')+'</div></div>'; }).join('');
+    var rows2 = list.map(function(c){ return '<div class="rating-row"><div class="crit-label">'+c[1]+'</div><div class="rating-value '+critClass(values[c[0]])+'">'+(values[c[0]] ? values[c[0]] : '—')+'</div></div>'; }).join('');
     return '<div class="rating-list"><div class="rating-head"><span>Critère</span><span>Note</span></div>'+rows2+'</div>';
   }
 
@@ -1262,6 +1272,8 @@ tr:last-child td{ border-bottom:none; }
     for(var i=1;i<UC_LEVELS.length;i++){ if(UC_LEVELS[i][0]===v) return 'lvl-'+v; }
     return '';
   }
+  var CRIT_COLOR_KEYS = {'0':'debutant','1':'initie','2':'debrouille','3':'confirme','4':'expert'};
+  function critClass(v){ return CRIT_COLOR_KEYS.hasOwnProperty(v) ? 'lvl-'+CRIT_COLOR_KEYS[v] : ''; }
   function ucBlockHtml(block, values, idx, editable){
     var rows;
     if(editable){
@@ -1320,7 +1332,7 @@ tr:last-child td{ border-bottom:none; }
 
   function periodSubTabs(dp){
     return [0,1,2].map(function(i){
-      return '<button type="button" class="tab-btn small '+(dp===i?'active':'')+'" data-action="switch-detail-period" data-idx="'+i+'">Période '+(i+1)+'</button>';
+      return '<button type="button" class="tab-btn small '+(dp===i?'active':'')+'" data-action="switch-detail-period" data-idx="'+i+'">Période '+(i+1)+' ('+TRIMESTRES[i]+')</button>';
     }).join('');
   }
 
@@ -1346,7 +1358,7 @@ tr:last-child td{ border-bottom:none; }
     var html = '';
     html += textBlock(idx,'tuteurCompetencesAcquises', d.tuteurCompetencesAcquises, 'Les compétences acquises', editable);
     html += '<h4 class="suivi-subtitle">Critères</h4>';
-    html += critGrid(CRIT1, d.criteres1, 'c1', idx, editable);
+    html += critGrid(CRIT1, d.criteresTuteur || {}, 'ct', idx, editable);
     html += textBlock(idx,'tuteurDifficultes', d.tuteurDifficultes, "Les difficultés rencontrées par le tuteur", editable);
     html += textBlock(idx,'tuteurRemarques', d.tuteurRemarques, 'Autres remarques', editable);
     if(editable){
@@ -2079,7 +2091,8 @@ tr:last-child td{ border-bottom:none; }
       updateStagiaire(id, function(s){
         var d = s.evaluations[pidxT];
         d.tuteurCompetencesAcquises = getVal('d-'+pidxT+'-tuteurCompetencesAcquises');
-        CRIT1.forEach(function(c){ d.criteres1[c[0]] = getVal('c1-'+pidxT+'-'+c[0]); });
+        d.criteresTuteur = d.criteresTuteur || {};
+        CRIT1.forEach(function(c){ d.criteresTuteur[c[0]] = getVal('ct-'+pidxT+'-'+c[0]); });
         d.tuteurDifficultes = getVal('d-'+pidxT+'-tuteurDifficultes');
         d.tuteurRemarques = getVal('d-'+pidxT+'-tuteurRemarques');
       });
@@ -2267,6 +2280,8 @@ tr:last-child td{ border-bottom:none; }
     var sel = e.target;
     if(sel && sel.classList && sel.classList.contains('uc-level')){
       sel.className = 'uc-level ' + lvlClass(sel.value);
+    } else if(sel && sel.classList && sel.classList.contains('crit-level')){
+      sel.className = 'crit-level ' + critClass(sel.value);
     }
   });
   document.addEventListener('change', function(e){
@@ -2282,7 +2297,7 @@ tr:last-child td{ border-bottom:none; }
   function autosaveActionForField(id){
     if(/^s-\d/.test(id)) return 'save-suivi';
     if(/^p[SD]-\d/.test(id)) return 'save-planning';
-    if(/^(d|c1|c2|uc)-\d/.test(id)) return document.querySelector('[data-action="save-detail-stagiaire"]') ? 'save-detail-stagiaire' : 'save-detail-tuteur';
+    if(/^(d|c1|c2|ct|uc)-\d/.test(id)) return document.querySelector('[data-action="save-detail-stagiaire"]') ? 'save-detail-stagiaire' : 'save-detail-tuteur';
     if(id.indexOf('self-')===0) return 'save-self-infos';
     if(/^doc-\d/.test(id)) return 'save-documents';
     if(id.indexOf('c-')===0) return 'save-infos';
