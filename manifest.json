@@ -1,0 +1,17 @@
+{
+  "name": "Suivi Stagiaire — Dojo Academy",
+  "short_name": "Suivi Stagiaire",
+  "description": "Suivi pédagogique des stagiaires en alternance — Dojo Academy",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#01061E",
+  "theme_color": "#1B3A9E",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
