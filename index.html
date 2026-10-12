@@ -216,8 +216,14 @@ tr:last-child td{ border-bottom:none; }
 .plan-btn .pb-sub{ font-size:0.68rem; font-weight:500; color:var(--text-muted); }
 .plan-btn.active{ background:var(--accent-grad); border-color:var(--accent); color:var(--accent-contrast); }
 .plan-btn.active .pb-sub{ color:var(--accent-contrast); opacity:0.9; }
-.period-btn .pb-sub::before{ content:' ('; }
-.period-btn .pb-sub::after{ content:')'; }
+.period-tabs{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; flex-wrap:nowrap; border-bottom:none; max-width:640px; }
+.period-btn{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; min-height:56px; padding:8px 6px; text-align:center;
+  background:var(--surface); border:1.5px solid var(--border); border-radius:12px; margin-bottom:0; font-size:0.95rem; color:var(--text); }
+.period-btn:hover{ border-color:var(--accent); color:var(--text); }
+.period-btn .pb-main{ font-weight:700; }
+.period-btn .pb-sub{ font-size:0.72rem; font-weight:500; color:var(--text-muted); white-space:nowrap; }
+.period-btn.active, .period-btn.active:hover{ background:var(--accent-grad); border-color:var(--accent); color:var(--accent-contrast); }
+.period-btn.active .pb-sub{ color:var(--accent-contrast); opacity:0.9; }
 .readonly-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px 24px; }
 @media (max-width:640px){ .readonly-grid{ grid-template-columns:1fr; } }
 .ro-item .k{ font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); margin-bottom:2px; }
@@ -346,14 +352,8 @@ tr:last-child td{ border-bottom:none; }
   .planning-block td:first-child{ font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:1rem; padding-bottom:4px; }
   .planning-block td[data-label]::before{ content:attr(data-label); display:block; font-size:0.72rem; font-weight:600; color:var(--text-muted); margin-bottom:3px; }
   .doc-row .grow, .doc-row .field{ flex:1 1 100%; max-width:none !important; }
-  .period-tabs{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; flex-wrap:nowrap; border-bottom:none; }
-  .period-btn{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; min-height:52px; padding:8px 4px; text-align:center;
-    background:var(--surface); border:1.5px solid var(--border); border-radius:12px; margin-bottom:0; font-size:0.9rem; color:var(--text); }
-  .period-btn .pb-main{ font-weight:700; }
-  .period-btn .pb-sub{ font-size:0.62rem; font-weight:500; color:var(--text-muted); white-space:nowrap; }
-  .period-btn .pb-sub::before, .period-btn .pb-sub::after{ content:''; }
-  .period-btn.active{ background:var(--accent-grad); border-color:var(--accent); color:var(--accent-contrast); }
-  .period-btn.active .pb-sub{ color:var(--accent-contrast); opacity:0.9; }
+  .period-btn{ min-height:52px; padding:8px 4px; }
+  .period-btn .pb-sub{ font-size:0.62rem; }
   .readonly-grid{ gap:12px 0; }
 }
 body{ -webkit-tap-highlight-color:transparent; }
