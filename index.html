@@ -9,11 +9,12 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style id="app-style">
 :root{
-  --bg:#E4EDFB;
-  --bg-deco:radial-gradient(circle at 8% 10%,rgba(47,107,224,.32),transparent 40%),radial-gradient(circle at 94% 12%,rgba(245,158,59,.26),transparent 36%),radial-gradient(circle at 88% 96%,rgba(245,158,59,.34),transparent 40%),radial-gradient(circle at 4% 92%,rgba(47,91,214,.22),transparent 38%);
-  --surface:#F6F9FF;
-  --surface-alt:#E3ECFC;
-  --border:#B4C7EC;
+  --bg:#CFDFF7;
+  --bg-deco:radial-gradient(circle at 8% 10%,rgba(47,107,224,.34),transparent 40%),radial-gradient(circle at 94% 12%,rgba(245,158,59,.28),transparent 36%),radial-gradient(circle at 88% 96%,rgba(245,158,59,.36),transparent 40%),radial-gradient(circle at 4% 92%,rgba(47,91,214,.24),transparent 38%);
+  --surface:#FCFDFF;
+  --surface-alt:#E1EBFC;
+  --field-bg:#E9F0FD;
+  --border:#8FA8DD;
   --text:#14234A;
   --text-muted:#52638F;
   --accent:#2F5BD6;
@@ -32,7 +33,7 @@
   --topbar-bg:linear-gradient(90deg,#1B3A9E 0%,#2F67D8 58%,#E8761E 100%);
   --topbar-text:#FFFFFF;
   --topbar-muted:rgba(255,255,255,0.86);
-  --shadow: 0 2px 4px rgba(20,35,90,0.10), 0 8px 22px rgba(20,35,90,0.14);
+  --shadow: 0 2px 6px rgba(20,35,90,0.18), 0 12px 28px rgba(20,35,90,0.22);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -40,7 +41,8 @@
     --bg-deco:radial-gradient(circle at 8% 10%,rgba(47,107,224,.28),transparent 40%),radial-gradient(circle at 94% 12%,rgba(245,158,59,.14),transparent 36%),radial-gradient(circle at 88% 96%,rgba(245,158,59,.18),transparent 40%);
     --surface:#18284A;
     --surface-alt:#1F3360;
-    --border:#33497F;
+    --field-bg:#0F1D3D;
+    --border:#4A64A0;
     --text:#E8EEFC;
     --text-muted:#A9B8DD;
     --accent:#7FA8FF;
@@ -67,7 +69,8 @@
   --bg-deco:radial-gradient(circle at 8% 10%,rgba(47,107,224,.28),transparent 40%),radial-gradient(circle at 94% 12%,rgba(245,158,59,.14),transparent 36%),radial-gradient(circle at 88% 96%,rgba(245,158,59,.18),transparent 40%);
   --surface:#18284A;
   --surface-alt:#1F3360;
-  --border:#33497F;
+  --field-bg:#0F1D3D;
+  --border:#4A64A0;
   --text:#E8EEFC;
   --text-muted:#A9B8DD;
   --accent:#7FA8FF;
@@ -104,10 +107,11 @@ button{ font-family:inherit; }
 a{ color:var(--accent); }
 code{ font-family:ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace; background:var(--surface-alt); padding:1px 6px; border-radius:5px; font-size:0.85em; }
 input,select,textarea{
-  font-family:inherit; font-size:0.92rem; color:var(--text); background:var(--surface);
-  border:1px solid var(--border); border-radius:8px; padding:8px 10px; width:100%;
+  font-family:inherit; font-size:0.92rem; color:var(--text); background:var(--field-bg);
+  border:1.5px solid var(--border); border-radius:8px; padding:8px 10px; width:100%;
+  box-shadow:inset 0 1px 3px rgba(20,35,90,0.12);
 }
-input:focus,select:focus,textarea:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+input:focus,select:focus,textarea:focus{ outline:2px solid var(--accent); outline-offset:1px; background:var(--surface); }
 textarea{ resize:vertical; min-height:64px; }
 label{ display:block; font-size:0.78rem; color:var(--text-muted); margin-bottom:4px; font-weight:500; }
 .field{ margin-bottom:14px; }
