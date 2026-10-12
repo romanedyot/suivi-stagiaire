@@ -334,6 +334,16 @@ body.is-offline .offline-banner{ display:block; }
 .ib-text{ flex:1; min-width:0; font-size:0.82rem; display:flex; flex-direction:column; line-height:1.3; }
 .ib-text span{ color:var(--text-muted); font-size:0.74rem; }
 .ib-close{ background:transparent; border:none; font-size:1.5rem; line-height:1; color:var(--text-muted); cursor:pointer; padding:0 4px; }
+.install-cta{ width:100%; justify-content:center; margin-top:14px; background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
+.install-guide{ display:none; position:fixed; inset:0; z-index:120; background:rgba(10,18,50,0.55); align-items:center; justify-content:center; padding:20px; }
+.install-guide.show{ display:flex; }
+.ig-card{ position:relative; width:100%; max-width:380px; background:var(--surface); border:1px solid var(--border); border-radius:18px; box-shadow:var(--shadow); padding:22px 20px 18px; text-align:center; }
+.ig-icon{ width:64px; height:64px; border-radius:15px; margin-bottom:8px; }
+.ig-card h3{ font-size:1.1rem; margin-bottom:12px; }
+.ig-x{ position:absolute; top:8px; right:10px; background:transparent; border:none; font-size:1.6rem; line-height:1; color:var(--text-muted); cursor:pointer; }
+.ig-steps{ text-align:left; margin:0 0 16px; padding-left:22px; font-size:0.92rem; }
+.ig-steps li{ margin-bottom:10px; }
+.ig-warn{ background:var(--warning-soft); color:var(--warning); border-radius:10px; padding:10px 12px; font-size:0.84rem; text-align:left; margin:0 0 12px; }
 .ptr{ position:fixed; top:0; left:50%; width:38px; height:38px; margin-left:-19px; border-radius:50%; background:var(--surface); box-shadow:var(--shadow); z-index:90; display:flex; align-items:center; justify-content:center; transform:translateY(-60px); opacity:0; pointer-events:none; }
 .ptr-spin{ width:18px; height:18px; border:2.5px solid var(--border); border-top-color:var(--accent); border-radius:50%; }
 .ptr.loading .ptr-spin{ animation:ptrspin 0.8s linear infinite; }
@@ -370,6 +380,7 @@ body.is-offline .offline-banner{ display:block; }
   <button type="button" class="ib-close" id="install-close" aria-label="Fermer">×</button>
 </div>
 <div id="ptr" class="ptr" aria-hidden="true"><span class="ptr-spin"></span></div>
+<div id="install-guide" class="install-guide"></div>
 <div id="root"></div>
 <div id="toast" class="toast"></div>
 <div id="print-area" class="print-area"></div>
@@ -1036,6 +1047,7 @@ body.is-offline .offline-banner{ display:block; }
         '<button type="button" class="btn btn-primary" data-action="submit-login" style="width:100%;">Se connecter</button>' +
       '</div>' +
       '<p class="hint-banner" style="margin-top:20px;">Vous ne connaissez pas vos identifiants, ou vous avez oublié votre mot de passe ? Contactez votre référent Dojo Academy.</p>' +
+      (isStandalone ? '' : '<button type="button" class="btn install-cta" data-action="open-install"><span aria-hidden="true">📲</span> Installer l’application sur mon téléphone</button>') +
     '</div>';
   }
 
@@ -2112,6 +2124,8 @@ body.is-offline .offline-banner{ display:block; }
     var id = el.getAttribute('data-id');
 
     if(action==='submit-login'){ doLogin(); return; }
+    if(action==='open-install'){ openInstall(); return; }
+    if(action==='close-install-guide'){ closeInstallGuide(); return; }
     if(action==='undo-last'){
       var entry = undoStack.pop();
       refreshUndoButton();
@@ -2680,11 +2694,60 @@ body.is-offline .offline-banner{ display:block; }
     showInstallBanner('Ajoutez Suivi Stagiaire à votre écran d’accueil.', true);
   });
   window.addEventListener('appinstalled', function(){ hideInstallBanner(true); deferredInstall = null; });
-  document.getElementById('install-btn').addEventListener('click', function(){
-    if(!deferredInstall) return;
-    deferredInstall.prompt();
-    deferredInstall.userChoice.then(function(){ deferredInstall = null; hideInstallBanner(false); });
-  });
+  function isIOSSafari(){
+    var ua = navigator.userAgent || '';
+    var isIOS = /iphone|ipad|ipod/i.test(ua) && !window.MSStream;
+    var inApp = /FBAN|FBAV|Instagram|Line\/|WhatsApp|Messenger|MicroMessenger|Snapchat/i.test(ua);
+    return isIOS && /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua) && !inApp;
+  }
+  function openInstall(){
+    if(deferredInstall){
+      deferredInstall.prompt();
+      deferredInstall.userChoice.then(function(){ deferredInstall = null; hideInstallBanner(false); });
+      return;
+    }
+    if(isIOSSafari() && navigator.share){
+      navigator.share({ title: 'Suivi Stagiaire — Dojo Academy', url: location.href.split('#')[0] }).catch(function(){});
+      showToast('Choisissez « Sur l’écran d’accueil » dans le menu.');
+      return;
+    }
+    openInstallGuide();
+  }
+  var SHARE_ICON = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M6 11H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1"/></svg>';
+  function openInstallGuide(){
+    var ua = navigator.userAgent || '';
+    var isIOS = /iphone|ipad|ipod/i.test(ua) && !window.MSStream;
+    var isAndroid = /android/i.test(ua);
+    var inAppBrowser = /FBAN|FBAV|Instagram|Line\/|WhatsApp|Messenger|MicroMessenger|Snapchat/i.test(ua);
+    var safari = isIOS && /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua) && !inAppBrowser;
+    var title = 'Installer l’application', warn = '', steps;
+    if(isIOS){
+      if(!safari){ warn = '<p class="ig-warn">Pour installer l’application sur iPhone, ouvrez d’abord ce lien dans <strong>Safari</strong> (touchez les trois points ou l’icône de boussole, puis « Ouvrir dans Safari »).</p>'; }
+      steps = ['Touchez le bouton <strong>Partager</strong> '+SHARE_ICON+' en bas de l’écran de Safari.',
+               'Faites défiler le menu et touchez <strong>« Sur l’écran d’accueil »</strong>.',
+               'Touchez <strong>« Ajouter »</strong> en haut à droite. L’icône apparaît sur votre écran d’accueil.'];
+    } else if(isAndroid){
+      steps = ['Touchez le menu <strong>⋮</strong> en haut à droite de Chrome.',
+               'Touchez <strong>« Installer l’application »</strong> (ou « Ajouter à l’écran d’accueil »).',
+               'Confirmez avec <strong>« Installer »</strong>. L’icône apparaît sur votre écran d’accueil.'];
+    } else {
+      steps = ['Cherchez l’icône d’installation <strong>⊕</strong> à droite de la barre d’adresse de votre navigateur.',
+               'Cliquez dessus, puis sur <strong>« Installer »</strong>.'];
+    }
+    var box = document.getElementById('install-guide');
+    box.innerHTML = '<div class="ig-card" role="dialog" aria-modal="true" aria-label="'+title+'">' +
+      '<button type="button" class="ig-x" data-action="close-install-guide" aria-label="Fermer">×</button>' +
+      '<img src="icon-192.png" alt="" class="ig-icon" />' +
+      '<h3>'+title+'</h3>' + warn +
+      '<ol class="ig-steps">'+steps.map(function(s){ return '<li>'+s+'</li>'; }).join('')+'</ol>' +
+      '<button type="button" class="btn btn-primary" data-action="close-install-guide" style="width:100%;">J’ai compris</button></div>';
+    box.classList.add('show');
+  }
+  function closeInstallGuide(){
+    var box = document.getElementById('install-guide');
+    box.classList.remove('show'); box.innerHTML = '';
+  }
+  document.getElementById('install-btn').addEventListener('click', openInstall);
   document.getElementById('install-close').addEventListener('click', function(){ hideInstallBanner(true); });
   if(/iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream && !isStandalone){
     setTimeout(function(){ showInstallBanner('Touchez Partager, puis « Sur l’écran d’accueil ».', false); }, 2500);
