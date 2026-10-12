@@ -448,12 +448,26 @@ tr:last-child td{ border-bottom:none; }
     if(formation==='DEJEPS IJ' || formation==='DEJEPS INSEP') return UC_BLOCKS_DEJEPS;
     if(formation==='DESJEPS PERF IJ' || formation==='DESJEPS PERF INSEP') return UC_BLOCKS_DESJEPS_PERF;
     if(formation==='DESJEPS ASEC DSP') return UC_BLOCKS_DESJEPS_ASEC;
+    for(var i=0;i<DATA.formations.length;i++){
+      var fm = DATA.formations[i];
+      if(fm.nom===formation && fm.modele && fm.modele!==formation) return ucBlocksForFormation(fm.modele);
+    }
     return UC_BLOCKS_DEFAULT;
   }
   var CRIT_LEVELS = [['','Non noté'],['0','0'],['1','1'],['2','2'],['3','3'],['4','4']];
   var UC_LEVELS = [['','Non évalué'],['debutant',"Débutant(e)"],['initie',"Initié(e)"],['debrouille',"Débrouillé(e)"],['confirme',"Confirmé(e)"],['expert',"Expert(e)"]];
 
-  var DATA = { comptes: [], stagiaires: [] };
+  var DATA = { comptes: [], stagiaires: [], formations: [] };
+  var FORMATION_MODELES = [['','BPJEPS (référentiel standard)'],['BPJEPS AF IJ','BPJEPS AF'],['DEJEPS IJ','DEJEPS'],['DESJEPS PERF IJ','DESJEPS Performance'],['DESJEPS ASEC DSP','DESJEPS ASEC']];
+  function allFormations(){
+    var out = FORMATIONS.slice();
+    DATA.formations.forEach(function(f){ if(out.indexOf(f.nom)===-1) out.push(f.nom); });
+    DATA.stagiaires.forEach(function(s){ if(s.formation && out.indexOf(s.formation)===-1) out.push(s.formation); });
+    return out;
+  }
+  function isCustomFormation(nom){
+    return FORMATIONS.indexOf(nom)===-1 && DATA.formations.some(function(f){ return f.nom===nom; });
+  }
   var syncStatus = 'checking';
   var docEditBuffer = null;
   var tasksEditBuffer = null;
@@ -523,9 +537,10 @@ tr:last-child td{ border-bottom:none; }
   function loadData(){
     return Promise.all([
       sb.from('stagiaires').select('*'),
-      sb.from('comptes').select('*')
+      sb.from('comptes').select('*'),
+      sb.from('formations').select('*')
     ]).then(function(results){
-      var stagRes = results[0], compRes = results[1];
+      var stagRes = results[0], compRes = results[1], formRes = results[2];
       if(stagRes.error || compRes.error){
         syncStatus = 'error';
         console.error('Chargement impossible', stagRes.error || compRes.error);
@@ -533,6 +548,7 @@ tr:last-child td{ border-bottom:none; }
       }
       DATA.stagiaires = stagRes.data.map(rowToStagiaire);
       DATA.comptes = compRes.data.map(rowToCompte);
+      DATA.formations = (formRes && !formRes.error && formRes.data) ? formRes.data.map(function(r){ return {nom:r.nom, modele:r.modele||''}; }) : [];
       syncStatus = 'shared';
     }).catch(function(err){ syncStatus = 'error'; console.error(err); });
   }
@@ -1016,7 +1032,18 @@ tr:last-child td{ border-bottom:none; }
         unreadList.map(function(st){ return '<li><strong>'+esc(fullName(st))+'</strong> — '+esc(st.structureNom)+'.</li>'; }).join('') +
         '</ul></div>';
     }
-    var cards = FORMATIONS.map(function(f){
+    var addFormationHtml = '';
+    if(view.showAddFormation){
+      addFormationHtml = '<div class="card add-form" style="margin-bottom:16px;"><h3 style="margin-bottom:14px;">Nouvelle formation</h3>' +
+        '<div class="form-grid">' +
+          '<div class="field"><label for="newformation-nom">Nom de la formation</label><input id="newformation-nom" placeholder="ex. BPJEPS AF Paris" /></div>' +
+          '<div class="field"><label for="newformation-modele">Référentiel de compétences à utiliser</label><select id="newformation-modele">' +
+            FORMATION_MODELES.map(function(m){ return '<option value="'+esc(m[0])+'">'+esc(m[1])+'</option>'; }).join('') +
+          '</select></div>' +
+        '</div>' +
+        '<div style="display:flex; gap:10px; margin-top:6px;"><button type="button" class="btn btn-primary" data-action="submit-add-formation">Ajouter cette formation</button><button type="button" class="btn" data-action="toggle-add-formation">Annuler</button></div></div>';
+    }
+    var cards = allFormations().map(function(f){
       var list = DATA.stagiaires.filter(function(s){ return s.formation===f; });
       var eleveCount = list.filter(function(s){ var lp=lastFilledPeriod(s); return lp && lp.risque==='eleve'; }).length;
       var unreadCount = list.filter(hasUnreadMessages).length;
@@ -1036,7 +1063,8 @@ tr:last-child td{ border-bottom:none; }
     '</div>' +
     priorityHtml +
     unreadHtml +
-    '<div class="section-head"><h2 style="font-size:1.15rem;">Formations</h2></div>' +
+    '<div class="section-head"><h2 style="font-size:1.15rem;">Formations</h2><button type="button" class="btn btn-primary" data-action="toggle-add-formation">+ Ajouter une formation</button></div>' +
+    addFormationHtml +
     '<div class="formation-grid">'+cards+'</div>';
   }
 
@@ -1087,7 +1115,9 @@ tr:last-child td{ border-bottom:none; }
     }
     return '' +
     '<button type="button" class="btn btn-ghost" data-action="back-to-formations">← Retour aux formations</button>' +
-    '<div class="section-head" style="margin-top:14px;"><h2 style="font-size:1.15rem;">'+esc(formation)+'</h2><button type="button" class="btn btn-primary" data-action="toggle-add-form">+ Ajouter un stagiaire</button></div>' +
+    '<div class="section-head" style="margin-top:14px;"><h2 style="font-size:1.15rem;">'+esc(formation)+'</h2><div style="display:flex;gap:10px;flex-wrap:wrap;">' +
+      (isCustomFormation(formation) && !list.length ? '<button type="button" class="btn" data-action="delete-formation" data-formation="'+esc(formation)+'">Supprimer cette formation</button>' : '') +
+      '<button type="button" class="btn btn-primary" data-action="toggle-add-form">+ Ajouter un stagiaire</button></div></div>' +
     addForm +
     (list.length ? '<div class="table-wrap"><table><thead><tr><th>Stagiaire</th><th>Structure</th><th>Tuteur</th><th>Risque</th><th>Feuilles remplies</th><th>Prochaine visite</th><th>Contact</th></tr></thead><tbody>'+rows+'</tbody></table></div>' : '<div class="empty-state">Aucun stagiaire dans cette formation pour le moment.</div>');
   }
@@ -1168,7 +1198,7 @@ tr:last-child td{ border-bottom:none; }
     else body = renderInfosTab(st, editable);
     var moveFormation = editable ? (
       '<div class="move-formation"><select id="move-formation-select">' +
-      FORMATIONS.map(function(f){ return '<option value="'+esc(f)+'" '+(st.formation===f?'selected':'')+'>'+esc(f)+'</option>'; }).join('') +
+      allFormations().map(function(f){ return '<option value="'+esc(f)+'" '+(st.formation===f?'selected':'')+'>'+esc(f)+'</option>'; }).join('') +
       '</select><button type="button" class="btn btn-sm" data-action="save-formation" data-id="'+esc(st.id)+'">Déplacer vers cette formation</button></div>'
     ) : '';
     var canEditPhoto = editable || view.role==='stagiaire';
@@ -2007,8 +2037,39 @@ tr:last-child td{ border-bottom:none; }
     if(action==='toggle-add-form'){
       view.showAdd = !view.showAdd; saveView(); render(); return;
     }
+    if(action==='toggle-add-formation'){
+      view.showAddFormation = !view.showAddFormation; saveView(); render(); return;
+    }
+    if(action==='submit-add-formation'){
+      var fNom = getVal('newformation-nom').replace(/\s+/g,' ').trim();
+      var fModele = getVal('newformation-modele');
+      if(!fNom){ showToast('Merci de renseigner le nom de la formation.'); return; }
+      var dup = allFormations().some(function(f){ return f.toLowerCase()===fNom.toLowerCase(); });
+      if(dup){ showToast('Cette formation existe déjà.'); return; }
+      sb.rpc('rpc_add_formation', { p_nom: fNom, p_modele: fModele }).then(function(res){
+        if(res.error){ showToast('Impossible d’ajouter la formation : '+res.error.message); return; }
+        DATA.formations.push({nom:fNom, modele:fModele});
+        view.showAddFormation = false; view.selectedFormation = fNom; view.selectedId = null; view.showAdd = false;
+        saveView(); render();
+        showToast('Formation ajoutée.');
+      });
+      return;
+    }
+    if(action==='delete-formation'){
+      var fDel = el.getAttribute('data-formation');
+      if(!fDel || !isCustomFormation(fDel)) return;
+      if(DATA.stagiaires.some(function(s){ return s.formation===fDel; })){ showToast('Cette formation contient encore des stagiaires.'); return; }
+      if(!window.confirm('Supprimer la formation « '+fDel+' » ? Elle ne contient aucun stagiaire.')) return;
+      sb.rpc('rpc_delete_formation', { p_nom: fDel }).then(function(res){
+        if(res.error){ showToast('Impossible de supprimer la formation : '+res.error.message); return; }
+        DATA.formations = DATA.formations.filter(function(f){ return f.nom!==fDel; });
+        view.selectedFormation = null; saveView(); render();
+        showToast('Formation supprimée.');
+      });
+      return;
+    }
     if(action==='submit-add-stagiaire'){
-      var formationForNew = el.getAttribute('data-formation') || FORMATIONS[0];
+      var formationForNew = el.getAttribute('data-formation') || allFormations()[0];
       var nst = emptyStagiaire(formationForNew);
       readInfosFromForm(nst, 'add-');
       if(!nst.prenom || !nst.nom){ showToast('Merci de renseigner au moins le prénom et le nom.'); return; }
