@@ -14,6 +14,7 @@
 <title>Suivi Alternance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap">
+<script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style id="app-style">
 :root{
@@ -420,7 +421,7 @@ body.is-offline .offline-banner{ display:block; }
 <div id="offline-banner" class="offline-banner" role="status">Pas de connexion. Vos modifications ne seront pas enregistrées tant que la connexion n’est pas revenue.</div>
 <div id="install-banner" class="install-banner" role="dialog" aria-label="Installer l’application">
   <img src="icon-192.png" alt="" class="ib-icon" />
-  <div class="ib-text"><strong>Installer l’application</strong><span id="install-hint">Ajoutez Suivi Stagiaire à votre écran d’accueil.</span></div>
+  <div class="ib-text"><strong>Installer l’application</strong><span id="install-hint">Ajoutez l’application à votre écran d’accueil.</span></div>
   <button type="button" class="btn btn-primary btn-sm" id="install-btn">Installer</button>
   <button type="button" class="ib-close" id="install-close" aria-label="Fermer">×</button>
 </div>
@@ -435,11 +436,30 @@ body.is-offline .offline-banner{ display:block; }
 <div id="print-area" class="print-area"></div>
 <script id="app-script">
 (function(){
-  var SUPABASE_URL = 'https://bfmkinqqesrvxuzrdfye.supabase.co';
-  var SUPABASE_KEY = 'sb_publishable_kMhg82Vpgn4h72cqkMh6Mw_sMN8IC8m';
+  var ORG = window.ORG || {
+    id:'dojo', nom:'Dojo Academy', sigle:'DA', titre:'Suivi Alternance',
+    sousTitre:'centralisation du suivi pédagogique des stagiaires en alternance',
+    supabaseUrl:'https://bfmkinqqesrvxuzrdfye.supabase.co', supabaseKey:'sb_publishable_kMhg82Vpgn4h72cqkMh6Mw_sMN8IC8m',
+    logo:'logo.png', formations:['BPJEPS FOAD','BPJEPS IJ','BPJEPS AF IJ','BPJEPS AF INSEP','BPJEPS INSEP','DEJEPS IJ','DEJEPS INSEP','DESJEPS PERF IJ','DESJEPS PERF INSEP','DESJEPS ASEC DSP'], theme:null
+  };
+  document.title = ORG.titre;
+  var appleTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+  if(appleTitle) appleTitle.setAttribute('content', ORG.titre);
+  if(ORG.theme){
+    var themeCss = function(vars){ return Object.keys(vars).map(function(k){ return k+':'+vars[k]+';'; }).join(''); };
+    var themeEl = document.createElement('style');
+    themeEl.textContent = (ORG.theme.light ? ':root{'+themeCss(ORG.theme.light)+'}' : '') +
+      (ORG.theme.dark ? '@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){'+themeCss(ORG.theme.dark)+'}}:root[data-theme="dark"]{'+themeCss(ORG.theme.dark)+'}' : '');
+    document.head.appendChild(themeEl);
+    if(ORG.theme.light && ORG.theme.light['--topbar-color']){
+      var tcm = document.querySelector('meta[name="theme-color"]'); if(tcm) tcm.setAttribute('content', ORG.theme.light['--topbar-color']);
+    }
+  }
+  var SUPABASE_URL = ORG.supabaseUrl;
+  var SUPABASE_KEY = ORG.supabaseKey;
   var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   var JOURS = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
-  var FORMATIONS = ['BPJEPS FOAD','BPJEPS IJ','BPJEPS AF IJ','BPJEPS AF INSEP','BPJEPS INSEP','DEJEPS IJ','DEJEPS INSEP','DESJEPS PERF IJ','DESJEPS PERF INSEP','DESJEPS ASEC DSP'];
+  var FORMATIONS = ORG.formations.slice();
   function ico(path){ return '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+path+'</svg>'; }
   var BOTTOM_NAV = [
     ['infos','Infos', ico('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>')],
@@ -451,7 +471,7 @@ body.is-offline .offline-banner{ display:block; }
     ['referent-contact','Référent', ico('<path d="M12 3l7.5 3v5.5c0 4.5-3.2 8.2-7.5 9.5-4.3-1.3-7.5-5-7.5-9.5V6z"/><path d="M9 12l2.2 2.2L15.5 10"/>')]
   ];
   var FICHE_TABS = [['infos','Mes infos'],['suivi-stagiaire','Mon suivi stagiaire'],['suivi-tuteur','Suivi tuteur'],['planning','Mon planning'],['documents','Mes documents'],['messages','Messagerie'],['referent-contact','Référent suivi pédagogique']];
-  var VIEW_KEY = 'dojoSuiviView_v3';
+  var VIEW_KEY = ORG.id==='dojo' ? 'dojoSuiviView_v3' : 'suiviView_v3_'+ORG.id;
 
   var CRIT1 = [
     ['integrationStructure','Intégration dans la structure'],
@@ -882,8 +902,8 @@ body.is-offline .offline-banner{ display:block; }
     blocks.push({type:'h2', text:'Planning en structure d’accueil'});
     blocks.push({type:'table', headers:['Jour','Horaires','Activité en structure'], colFractions:[0.2,0.25,0.55],
       rows: st.planningStructure.map(function(r){ return [r.jour, r.horaires||'—', r.activite||'—']; })});
-    blocks.push({type:'h2', text:'Planning à Dojo Academy'});
-    blocks.push({type:'table', headers:['Jour','Horaires','Module à Dojo Academy'], colFractions:[0.2,0.25,0.55],
+    blocks.push({type:'h2', text:'Planning à '+ORG.nom});
+    blocks.push({type:'table', headers:['Jour','Horaires','Module à '+ORG.nom], colFractions:[0.2,0.25,0.55],
       rows: st.planningDojo.map(function(r){ return [r.jour, r.horaires||'—', r.module||'—']; })});
     return blocks;
   }
@@ -1079,16 +1099,16 @@ body.is-offline .offline-banner{ display:block; }
   function renderLogin(){
     return '' +
     '<div class="login-wrap">' +
-      '<img src="logo.png?v=2" alt="Dojo Academy" class="login-logo" onerror="this.style.display=\'none\'" />' +
-      '<h1 class="login-title">Suivi Alternance</h1>' +
-      '<p class="login-sub">Dojo Academy — centralisation du suivi pédagogique des stagiaires en alternance</p>' +
+      '<img src="'+esc(ORG.logo)+'?v=2" alt="'+esc(ORG.nom)+'" class="login-logo" onerror="this.style.display=\'none\'" />' +
+      '<h1 class="login-title">'+esc(ORG.titre)+'</h1>' +
+      '<p class="login-sub">'+esc(ORG.nom)+' — '+esc(ORG.sousTitre)+'</p>' +
       '<div class="login-card">' +
         '<h3>Connexion</h3>' +
         '<div class="field"><label for="login-identifiant">Identifiant (pseudo ou e-mail)</label><input id="login-identifiant" type="text" autocomplete="username" /></div>' +
         '<div class="field"><label for="login-motdepasse">Mot de passe</label><input id="login-motdepasse" type="password" autocomplete="current-password" /></div>' +
         '<button type="button" class="btn btn-primary" data-action="submit-login" style="width:100%;">Se connecter</button>' +
       '</div>' +
-      '<p class="hint-banner" style="margin-top:20px;">Vous ne connaissez pas vos identifiants, ou vous avez oublié votre mot de passe ? Contactez votre référent Dojo Academy.</p>' +
+      '<p class="hint-banner" style="margin-top:20px;">Vous ne connaissez pas vos identifiants, ou vous avez oublié votre mot de passe ? Contactez votre référent '+esc(ORG.nom)+'.</p>' +
       (isStandalone ? '' : '<button type="button" class="btn install-cta" data-action="open-install"><span aria-hidden="true">📲</span> Installer l’application sur mon téléphone</button>') +
     '</div>';
   }
@@ -1097,8 +1117,8 @@ body.is-offline .offline-banner{ display:block; }
     var label = view.role==='tuteur' ? 'tuteur' : 'stagiaire';
     return '' +
     '<div class="login-wrap">' +
-      '<img src="logo.png?v=2" alt="Dojo Academy" class="login-logo" onerror="this.style.display=\'none\'" />' +
-      '<h1 class="login-title">Suivi Alternance</h1>' +
+      '<img src="'+esc(ORG.logo)+'?v=2" alt="'+esc(ORG.nom)+'" class="login-logo" onerror="this.style.display=\'none\'" />' +
+      '<h1 class="login-title">'+esc(ORG.titre)+'</h1>' +
       '<p class="login-sub">Première connexion</p>' +
       '<div class="login-card">' +
         '<h3>Bienvenue !</h3>' +
@@ -1127,7 +1147,7 @@ body.is-offline .offline-banner{ display:block; }
     var unreadBadge = unreadCount>0 ? '<span class="pill pill-warning" title="'+esc(unreadTitle)+'">🔔 '+unreadCount+'</span>' : '';
     return '' +
     '<div class="topbar">' +
-      '<div class="brand"><span class="mark">DA</span><div><h1>Suivi Alternance</h1><div class="sub">Dojo Academy</div></div></div>' +
+      '<div class="brand"><span class="mark">'+esc(ORG.sigle)+'</span><div><h1>'+esc(ORG.titre)+'</h1><div class="sub">'+esc(ORG.nom)+'</div></div></div>' +
       '<div class="topbar-right">' +
         '<span id="undo-slot">' + undoButtonHtml() + '</span>' +
         unreadBadge +
@@ -1173,7 +1193,7 @@ body.is-offline .offline-banner{ display:block; }
     } else if(view.role==='tuteur'){
       var tList = tuteurStagiaires(view.profileId);
       if(!tList.length){
-        main = '<div class="empty-state">Aucun stagiaire ne vous est encore associé à cette adresse. Contactez votre référent Dojo Academy.</div>';
+        main = '<div class="empty-state">Aucun stagiaire ne vous est encore associé à cette adresse. Contactez votre référent '+esc(ORG.nom)+'.</div>';
       } else {
         var activeId = view.selectedId && tList.some(function(s){ return s.id===view.selectedId; }) ? view.selectedId : tList[0].id;
         view.selectedId = activeId;
@@ -1318,8 +1338,8 @@ body.is-offline .offline-banner{ display:block; }
 
   function mailtoInviteHtml(email, prenom, identifiant, motDePasse, roleLabel){
     if(!email || !identifiant || !motDePasse) return '';
-    var subject = 'Vos identifiants de connexion — Suivi Alternance (Dojo Academy)';
-    var body = 'Bonjour '+prenom+',\n\nVoici vos identifiants pour accéder à votre espace '+roleLabel+' sur Suivi Alternance :\n\nIdentifiant : '+identifiant+'\nMot de passe provisoire : '+motDePasse+'\n\nVous devrez choisir un nouveau mot de passe lors de votre première connexion.\n\nCordialement,\nDojo Academy';
+    var subject = 'Vos identifiants de connexion — '+ORG.titre+' ('+ORG.nom+')';
+    var body = 'Bonjour '+prenom+',\n\nVoici vos identifiants pour accéder à votre espace '+roleLabel+' sur '+ORG.titre+' :\n\nIdentifiant : '+identifiant+'\nMot de passe provisoire : '+motDePasse+'\n\nVous devrez choisir un nouveau mot de passe lors de votre première connexion.\n\nCordialement,\n'+ORG.nom;
     var href = 'mailto:'+email+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
     var mailtoBtn = '<a class="btn btn-sm" href="'+esc(href)+'" style="margin-top:8px;display:inline-flex;">✉️ Envoyer les identifiants par e-mail</a>';
     var copyBtn = '<button type="button" class="btn btn-sm" style="margin-top:8px;margin-left:8px;" data-action="copy-invite"' +
@@ -1614,7 +1634,7 @@ body.is-offline .offline-banner{ display:block; }
   }
 
   function planningTable(list, kind, editable){
-    var labelCol = kind==='structure' ? 'Activité en structure' : 'Module à Dojo Academy';
+    var labelCol = kind==='structure' ? 'Activité en structure' : 'Module à '+ORG.nom;
     var field = kind==='structure' ? 'activite' : 'module';
     var prefix = kind==='structure' ? 'pS-' : 'pD-';
     if(editable){
@@ -1640,10 +1660,10 @@ body.is-offline .offline-banner{ display:block; }
         '<span class="pb-main">'+label+'</span><span class="pb-sub">'+(isFilled ? 'Rempli' : 'À remplir')+'</span></button>';
     }
     var block = kind==='dojo'
-      ? '<div class="planning-block"><h3>Planning à Dojo Academy</h3>' + planningTable(st.planningDojo, 'dojo', canEdit) + '</div>'
+      ? '<div class="planning-block"><h3>Planning à '+esc(ORG.nom)+'</h3>' + planningTable(st.planningDojo, 'dojo', canEdit) + '</div>'
       : '<div class="planning-block"><h3>Planning en structure d’accueil</h3>' + planningTable(st.planningStructure, 'structure', canEdit) + '</div>';
     return '' +
-    '<div class="plan-tabs">' + btn('structure', 'Planning structure', filled(st.planningStructure,'activite')) + btn('dojo', 'Planning Dojo Academy', filled(st.planningDojo,'module')) + '</div>' +
+    '<div class="plan-tabs">' + btn('structure', 'Planning structure', filled(st.planningStructure,'activite')) + btn('dojo', 'Planning '+esc(ORG.nom), filled(st.planningDojo,'module')) + '</div>' +
     block +
     '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">' +
       (canEdit ? '<button type="button" class="btn btn-primary" data-action="save-planning" data-id="'+esc(st.id)+'">Enregistrer le planning</button>' : '') +
@@ -1690,7 +1710,7 @@ body.is-offline .offline-banner{ display:block; }
   var VISITE_DEROULEMENT = [
     ['accueil','Accueil et présentation','Accueil du tuteur et de l’alternant. Présentation du cadre de la visite.','5 min'],
     ['visite-structure','Visite de la structure','Découverte de l’environnement : salle, matériel, affichages, accessibilité, sécurité, ambiance générale.','5 à 10 min'],
-    ['entretien-tuteur','Entretien avec le tuteur','Échanges sur la progression de l’alternant, missions, points forts, axes d’amélioration, communication avec la Dojo Academy.','10 à 15 min'],
+    ['entretien-tuteur','Entretien avec le tuteur','Échanges sur la progression de l’alternant, missions, points forts, axes d’amélioration, communication avec '+ORG.nom+'.','10 à 15 min'],
     ['entretien-alternant','Entretien avec l’alternant','Retour sur son intégration, missions, relation tuteur, apports et difficultés.','10 à 15 min'],
     ['entretien-tripartite','Entretien tripartite','Synthèse, définition d’objectifs communs, validation des actions à venir.','10 min'],
     ['observation-seance','Observation de séance / cours','Observation : posture, gestion de groupe, sécurité, technique, pédagogie, communication, attitude.','15 à 20 min'],
@@ -2377,7 +2397,7 @@ body.is-offline .offline-banner{ display:block; }
       var invId = el.getAttribute('data-invite-id');
       var invPwd = el.getAttribute('data-invite-pwd');
       var invRole = el.getAttribute('data-invite-role');
-      var invText = 'À : '+invEmail+'\nObjet : Vos identifiants de connexion — Suivi Alternance (Dojo Academy)\n\nBonjour '+invPrenom+',\n\nVoici vos identifiants pour accéder à votre espace '+invRole+' sur Suivi Alternance :\n\nIdentifiant : '+invId+'\nMot de passe provisoire : '+invPwd+'\n\nVous devrez choisir un nouveau mot de passe lors de votre première connexion.\n\nCordialement,\nDojo Academy';
+      var invText = 'À : '+invEmail+'\nObjet : Vos identifiants de connexion — '+ORG.titre+' ('+ORG.nom+')\n\nBonjour '+invPrenom+',\n\nVoici vos identifiants pour accéder à votre espace '+invRole+' sur '+ORG.titre+' :\n\nIdentifiant : '+invId+'\nMot de passe provisoire : '+invPwd+'\n\nVous devrez choisir un nouveau mot de passe lors de votre première connexion.\n\nCordialement,\n'+ORG.nom;
       if(navigator.clipboard && navigator.clipboard.writeText){
         navigator.clipboard.writeText(invText).then(function(){
           showToast('Message copié : collez-le dans un e-mail, SMS ou messagerie.');
@@ -2680,7 +2700,7 @@ body.is-offline .offline-banner{ display:block; }
   });
 
   var deferredInstall = null;
-  var INSTALL_KEY = 'dojoInstallDismissed';
+  var INSTALL_KEY = ORG.id==='dojo' ? 'dojoInstallDismissed' : 'installDismissed_'+ORG.id;
   function installDismissed(){ try{ return localStorage.getItem(INSTALL_KEY)==='1'; }catch(e){ return false; } }
   function showInstallBanner(hint, withButton){
     if(isStandalone || installDismissed()) return;
@@ -2697,7 +2717,7 @@ body.is-offline .offline-banner{ display:block; }
   }
   window.addEventListener('beforeinstallprompt', function(e){
     e.preventDefault(); deferredInstall = e;
-    showInstallBanner('Ajoutez Suivi Stagiaire à votre écran d’accueil.', true);
+    showInstallBanner('Ajoutez l’application à votre écran d’accueil.', true);
   });
   window.addEventListener('appinstalled', function(){ hideInstallBanner(true); deferredInstall = null; });
   function isIOSDevice(){
