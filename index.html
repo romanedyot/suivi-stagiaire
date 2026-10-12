@@ -2694,21 +2694,22 @@ body.is-offline .offline-banner{ display:block; }
     showInstallBanner('Ajoutez Suivi Stagiaire à votre écran d’accueil.', true);
   });
   window.addEventListener('appinstalled', function(){ hideInstallBanner(true); deferredInstall = null; });
-  function isIOSSafari(){
+  function isIOSDevice(){
     var ua = navigator.userAgent || '';
-    var isIOS = /iphone|ipad|ipod/i.test(ua) && !window.MSStream;
-    var inApp = /FBAN|FBAV|Instagram|Line\/|WhatsApp|Messenger|MicroMessenger|Snapchat/i.test(ua);
-    return isIOS && /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua) && !inApp;
+    return (/iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) && !window.MSStream;
   }
+  function isInAppBrowser(){ return /FBAN|FBAV|Instagram|Line\/|WhatsApp|Messenger|MicroMessenger|Snapchat/i.test(navigator.userAgent || ''); }
   function openInstall(){
     if(deferredInstall){
       deferredInstall.prompt();
       deferredInstall.userChoice.then(function(){ deferredInstall = null; hideInstallBanner(false); });
       return;
     }
-    if(isIOSSafari() && navigator.share){
-      navigator.share({ title: 'Suivi Stagiaire — Dojo Academy', url: location.href.split('#')[0] }).catch(function(){});
+    if(isIOSDevice() && !isInAppBrowser() && navigator.share){
       showToast('Choisissez « Sur l’écran d’accueil » dans le menu.');
+      navigator.share({ title: 'Suivi Stagiaire — Dojo Academy', url: location.href.split('#')[0] }).catch(function(err){
+        if(!err || err.name !== 'AbortError'){ openInstallGuide(); }
+      });
       return;
     }
     openInstallGuide();
@@ -2716,10 +2717,9 @@ body.is-offline .offline-banner{ display:block; }
   var SHARE_ICON = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-4px" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M6 11H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1"/></svg>';
   function openInstallGuide(){
     var ua = navigator.userAgent || '';
-    var isIOS = /iphone|ipad|ipod/i.test(ua) && !window.MSStream;
+    var isIOS = isIOSDevice();
     var isAndroid = /android/i.test(ua);
-    var inAppBrowser = /FBAN|FBAV|Instagram|Line\/|WhatsApp|Messenger|MicroMessenger|Snapchat/i.test(ua);
-    var safari = isIOS && /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua) && !inAppBrowser;
+    var safari = isIOS && /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(ua) && !isInAppBrowser();
     var title = 'Installer l’application', warn = '', steps;
     if(isIOS){
       if(!safari){ warn = '<p class="ig-warn">Pour installer l’application sur iPhone, ouvrez d’abord ce lien dans <strong>Safari</strong> (touchez les trois points ou l’icône de boussole, puis « Ouvrir dans Safari »).</p>'; }
