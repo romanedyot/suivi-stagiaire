@@ -459,14 +459,20 @@ tr:last-child td{ border-bottom:none; }
 
   var DATA = { comptes: [], stagiaires: [], formations: [] };
   var FORMATION_MODELES = [['','BPJEPS (référentiel standard)'],['BPJEPS AF IJ','BPJEPS AF'],['DEJEPS IJ','DEJEPS'],['DESJEPS PERF IJ','DESJEPS Performance'],['DESJEPS ASEC DSP','DESJEPS ASEC']];
+  // Une formation d'origine "supprimée" est cachée par une ligne marqueur dans la table formations (pas besoin de toucher au schéma).
+  var HIDDEN_PREFIX = '__masquee__';
+  DATA.hidden = [];
   function allFormations(){
-    var out = FORMATIONS.slice();
+    var out = FORMATIONS.filter(function(f){ return DATA.hidden.indexOf(f)===-1; });
     DATA.formations.forEach(function(f){ if(out.indexOf(f.nom)===-1) out.push(f.nom); });
     DATA.stagiaires.forEach(function(s){ if(s.formation && out.indexOf(s.formation)===-1) out.push(s.formation); });
     return out;
   }
   function isCustomFormation(nom){
     return FORMATIONS.indexOf(nom)===-1 && DATA.formations.some(function(f){ return f.nom===nom; });
+  }
+  function formationHasStagiaires(nom){
+    return DATA.stagiaires.some(function(s){ return s.formation===nom; });
   }
   var syncStatus = 'checking';
   var docEditBuffer = null;
@@ -548,7 +554,9 @@ tr:last-child td{ border-bottom:none; }
       }
       DATA.stagiaires = stagRes.data.map(rowToStagiaire);
       DATA.comptes = compRes.data.map(rowToCompte);
-      DATA.formations = (formRes && !formRes.error && formRes.data) ? formRes.data.map(function(r){ return {nom:r.nom, modele:r.modele||''}; }) : [];
+      var formRows = (formRes && !formRes.error && formRes.data) ? formRes.data : [];
+      DATA.hidden = formRows.filter(function(r){ return r.nom.indexOf(HIDDEN_PREFIX)===0; }).map(function(r){ return r.nom.slice(HIDDEN_PREFIX.length); });
+      DATA.formations = formRows.filter(function(r){ return r.nom.indexOf(HIDDEN_PREFIX)!==0; }).map(function(r){ return {nom:r.nom, modele:r.modele||''}; });
       syncStatus = 'shared';
     }).catch(function(err){ syncStatus = 'error'; console.error(err); });
   }
@@ -846,11 +854,42 @@ tr:last-child td{ border-bottom:none; }
   // ---------- persistence ----------
   var STAGIAIRE_PATCH_FIELDS = ['prenom','nom','formation','telephone','email','structureNom','structureAdresse','tuteurNom','tuteurTelephone','tuteurEmail','identifiantStagiaire','planningStructure','planningDojo','documents','visites','suivis','evaluations','messages','photo'];
 
+  // ---------- annulation (bouton « ↩ Annuler » : revient sur la dernière modification) ----------
+  var undoStack = [];
+  var UNDO_MAX = 30;
+  function pushUndo(label, run){
+    undoStack.push({ label: label, run: run });
+    if(undoStack.length>UNDO_MAX) undoStack.shift();
+    refreshUndoButton();
+  }
+  function undoButtonHtml(){
+    if(!undoStack.length) return '';
+    var last = undoStack[undoStack.length-1];
+    return '<button type="button" class="btn btn-sm" data-action="undo-last" title="Annuler : '+esc(last.label)+'">↩ Annuler</button>';
+  }
+  function refreshUndoButton(){
+    var slot = document.getElementById('undo-slot');
+    if(slot) slot.innerHTML = undoButtonHtml();
+  }
+  function restoreStagiaireFields(id, before, fields){
+    var cur = findStagiaire(id);
+    if(!cur) return Promise.resolve({ error: { message: 'Ce stagiaire n’existe plus.' } });
+    var restored = deepClone(cur);
+    var patch = {};
+    fields.forEach(function(k){ restored[k] = deepClone(before[k]); patch[k] = restored[k]; });
+    var idx = DATA.stagiaires.findIndex(function(x){ return x.id===id; });
+    if(idx>=0) DATA.stagiaires[idx] = restored;
+    docEditBuffer = null; tasksEditBuffer = null; visiteEditBuffer = null;
+    render();
+    return sb.rpc('rpc_update_stagiaire', { p_id: id, p_patch: patch });
+  }
+
   function updateStagiaire(id, mutator, successMsg){
     var st = findStagiaire(id);
     if(!st) return;
     var clone = deepClone(st);
     mutator(clone);
+    var changed = STAGIAIRE_PATCH_FIELDS.filter(function(k){ return JSON.stringify(st[k]) !== JSON.stringify(clone[k]); });
     var idx = DATA.stagiaires.findIndex(function(x){ return x.id===id; });
     if(idx>=0) DATA.stagiaires[idx] = clone;
     saveView();
@@ -858,8 +897,11 @@ tr:last-child td{ border-bottom:none; }
     var patch = {};
     STAGIAIRE_PATCH_FIELDS.forEach(function(k){ patch[k] = clone[k]; });
     sb.rpc('rpc_update_stagiaire', { p_id: id, p_patch: patch }).then(function(res){
-      if(res.error){ showToast('Enregistrement impossible : '+res.error.message); }
-      else if(successMsg !== null){ showToast(successMsg || 'Enregistré.'); }
+      if(res.error){ showToast('Enregistrement impossible : '+res.error.message); return; }
+      if(changed.length){
+        pushUndo('Modification de '+fullName(clone), function(){ return restoreStagiaireFields(id, st, changed); });
+      }
+      if(successMsg !== null){ showToast(successMsg || 'Enregistré.'); }
     });
   }
 
@@ -936,6 +978,7 @@ tr:last-child td{ border-bottom:none; }
     '<div class="topbar">' +
       '<div class="brand"><span class="mark">DA</span><div><h1>Suivi Alternance</h1><div class="sub">Dojo Academy</div></div></div>' +
       '<div class="topbar-right">' +
+        '<span id="undo-slot">' + undoButtonHtml() + '</span>' +
         unreadBadge +
         '<span class="sync-dot ' + dotClass + '"><span class="d"></span>' + dotLabel + '</span>' +
         '<div class="actor"><div class="name">' + esc(a.auteur) + '</div><div class="role">' + esc(a.roleLabel) + '</div></div>' +
@@ -1116,7 +1159,7 @@ tr:last-child td{ border-bottom:none; }
     return '' +
     '<button type="button" class="btn btn-ghost" data-action="back-to-formations">← Retour aux formations</button>' +
     '<div class="section-head" style="margin-top:14px;"><h2 style="font-size:1.15rem;">'+esc(formation)+'</h2><div style="display:flex;gap:10px;flex-wrap:wrap;">' +
-      (isCustomFormation(formation) && !list.length ? '<button type="button" class="btn" data-action="delete-formation" data-formation="'+esc(formation)+'">Supprimer cette formation</button>' : '') +
+      (!list.length ? '<button type="button" class="btn" data-action="delete-formation" data-formation="'+esc(formation)+'">Supprimer cette formation</button>' : '') +
       '<button type="button" class="btn btn-primary" data-action="toggle-add-form">+ Ajouter un stagiaire</button></div></div>' +
     addForm +
     (list.length ? '<div class="table-wrap"><table><thead><tr><th>Stagiaire</th><th>Structure</th><th>Tuteur</th><th>Risque</th><th>Feuilles remplies</th><th>Prochaine visite</th><th>Contact</th></tr></thead><tbody>'+rows+'</tbody></table></div>' : '<div class="empty-state">Aucun stagiaire dans cette formation pour le moment.</div>');
@@ -1965,7 +2008,19 @@ tr:last-child td{ border-bottom:none; }
     var id = el.getAttribute('data-id');
 
     if(action==='submit-login'){ doLogin(); return; }
+    if(action==='undo-last'){
+      var entry = undoStack.pop();
+      refreshUndoButton();
+      if(!entry) return;
+      Promise.resolve(entry.run()).then(function(res){
+        if(res && res.error){ undoStack.push(entry); refreshUndoButton(); showToast('Impossible d’annuler : '+res.error.message); return; }
+        refreshUndoButton();
+        showToast('Annulé : '+entry.label);
+      });
+      return;
+    }
     if(action==='change-profile'){
+      undoStack.length = 0;
       docEditBuffer = null; tasksEditBuffer = null; visiteEditBuffer = null;
       view = { screen:'login', role:null, profileId:null, selectedFormation:null, selectedId:null, tab:'infos', showAdd:false, detailPeriod:0 };
       saveView(); render(); return;
@@ -2046,25 +2101,57 @@ tr:last-child td{ border-bottom:none; }
       if(!fNom){ showToast('Merci de renseigner le nom de la formation.'); return; }
       var dup = allFormations().some(function(f){ return f.toLowerCase()===fNom.toLowerCase(); });
       if(dup){ showToast('Cette formation existe déjà.'); return; }
-      sb.rpc('rpc_add_formation', { p_nom: fNom, p_modele: fModele }).then(function(res){
+      var hiddenMatch = null;
+      DATA.hidden.forEach(function(n){ if(n.toLowerCase()===fNom.toLowerCase()) hiddenMatch = n; });
+      var addReq = hiddenMatch ? sb.rpc('rpc_delete_formation', { p_nom: HIDDEN_PREFIX+hiddenMatch }) : sb.rpc('rpc_add_formation', { p_nom: fNom, p_modele: fModele });
+      addReq.then(function(res){
         if(res.error){ showToast('Impossible d’ajouter la formation : '+res.error.message); return; }
-        DATA.formations.push({nom:fNom, modele:fModele});
+        if(hiddenMatch){ DATA.hidden = DATA.hidden.filter(function(n){ return n!==hiddenMatch; }); fNom = hiddenMatch; }
+        else { DATA.formations.push({nom:fNom, modele:fModele}); }
         view.showAddFormation = false; view.selectedFormation = fNom; view.selectedId = null; view.showAdd = false;
         saveView(); render();
         showToast('Formation ajoutée.');
+        var addedName = fNom, addedHidden = !!hiddenMatch;
+        pushUndo('Ajout de la formation « '+addedName+' »', function(){
+          var rm = addedHidden ? sb.rpc('rpc_add_formation', { p_nom: HIDDEN_PREFIX+addedName, p_modele: '' }) : sb.rpc('rpc_delete_formation', { p_nom: addedName });
+          return rm.then(function(r){
+            if(!r.error){
+              if(addedHidden){ if(DATA.hidden.indexOf(addedName)===-1) DATA.hidden.push(addedName); }
+              else { DATA.formations = DATA.formations.filter(function(f){ return f.nom!==addedName; }); }
+              if(view.selectedFormation===addedName){ view.selectedFormation = null; view.showAdd = false; }
+              saveView(); render();
+            }
+            return r;
+          });
+        });
       });
       return;
     }
     if(action==='delete-formation'){
       var fDel = el.getAttribute('data-formation');
-      if(!fDel || !isCustomFormation(fDel)) return;
-      if(DATA.stagiaires.some(function(s){ return s.formation===fDel; })){ showToast('Cette formation contient encore des stagiaires.'); return; }
-      if(!window.confirm('Supprimer la formation « '+fDel+' » ? Elle ne contient aucun stagiaire.')) return;
-      sb.rpc('rpc_delete_formation', { p_nom: fDel }).then(function(res){
+      if(!fDel) return;
+      if(formationHasStagiaires(fDel)){ showToast('Cette formation contient encore des stagiaires.'); return; }
+      var builtin = FORMATIONS.indexOf(fDel)!==-1;
+      var fModele = '';
+      DATA.formations.forEach(function(f){ if(f.nom===fDel) fModele = f.modele; });
+      var req = builtin ? sb.rpc('rpc_add_formation', { p_nom: HIDDEN_PREFIX+fDel, p_modele: '' }) : sb.rpc('rpc_delete_formation', { p_nom: fDel });
+      req.then(function(res){
         if(res.error){ showToast('Impossible de supprimer la formation : '+res.error.message); return; }
-        DATA.formations = DATA.formations.filter(function(f){ return f.nom!==fDel; });
-        view.selectedFormation = null; saveView(); render();
+        if(builtin){ if(DATA.hidden.indexOf(fDel)===-1) DATA.hidden.push(fDel); }
+        else { DATA.formations = DATA.formations.filter(function(f){ return f.nom!==fDel; }); }
+        view.selectedFormation = null; view.showAdd = false; saveView(); render();
         showToast('Formation supprimée.');
+        pushUndo('Suppression de la formation « '+fDel+' »', function(){
+          var undoReq = builtin ? sb.rpc('rpc_delete_formation', { p_nom: HIDDEN_PREFIX+fDel }) : sb.rpc('rpc_add_formation', { p_nom: fDel, p_modele: fModele });
+          return undoReq.then(function(r){
+            if(!r.error){
+              if(builtin){ DATA.hidden = DATA.hidden.filter(function(n){ return n!==fDel; }); }
+              else { DATA.formations.push({nom:fDel, modele:fModele}); }
+              render();
+            }
+            return r;
+          });
+        });
       });
       return;
     }
@@ -2083,6 +2170,17 @@ tr:last-child td{ border-bottom:none; }
         view.showAdd = false; view.selectedId = nst.id; view.selectedFormation = formationForNew; resetNav();
         saveView(); render();
         showToast('Stagiaire ajouté.');
+        var addedId = nst.id;
+        pushUndo('Ajout de '+fullName(nst), function(){
+          return sb.rpc('rpc_delete_stagiaire', { p_id: addedId }).then(function(r){
+            if(!r.error){
+              DATA.stagiaires = DATA.stagiaires.filter(function(s){ return s.id!==addedId; });
+              if(view.selectedId===addedId){ view.selectedId = null; resetNav(); }
+              saveView(); render();
+            }
+            return r;
+          });
+        });
       });
       return;
     }
@@ -2111,6 +2209,8 @@ tr:last-child td{ border-bottom:none; }
       view.confirmDeleteStagiaire = false; saveView(); render(); return;
     }
     if(action==='confirm-delete-stagiaire'){
+      var goneSrc = findStagiaire(id);
+      var gone = goneSrc ? deepClone(goneSrc) : null;
       view.confirmDeleteStagiaire = false; view.selectedId = null; view.selectedFormation = null; resetNav();
       saveView(); render();
       sb.rpc('rpc_delete_stagiaire', { p_id: id }).then(function(res){
@@ -2118,6 +2218,21 @@ tr:last-child td{ border-bottom:none; }
         DATA.stagiaires = DATA.stagiaires.filter(function(s){ return s.id!==id; });
         render();
         showToast('Stagiaire supprimé.');
+        if(gone){
+          pushUndo('Suppression de '+fullName(gone), function(){
+            return sb.rpc('rpc_create_stagiaire', { p_data: gone, p_password: null }).then(function(cr){
+              if(cr.error || !cr.data) return { error: cr.error || { message: 'Création impossible.' } };
+              var back = deepClone(gone);
+              back.id = cr.data; back.motDePasseDefiniStagiaire = false;
+              var patch = {};
+              STAGIAIRE_PATCH_FIELDS.forEach(function(k){ patch[k] = back[k]; });
+              return sb.rpc('rpc_update_stagiaire', { p_id: back.id, p_patch: patch }).then(function(up){
+                if(!up.error){ DATA.stagiaires.push(back); render(); }
+                return up;
+              });
+            });
+          });
+        }
       });
       return;
     }
@@ -2401,6 +2516,8 @@ tr:last-child td{ border-bottom:none; }
     var t = e.target;
     if(!t || (t.tagName!=='INPUT' && t.tagName!=='TEXTAREA' && t.tagName!=='SELECT')) return;
     if(t.type==='password') return;
+    var rt = e.relatedTarget;
+    if(rt && rt.getAttribute && rt.getAttribute('data-action')==='undo-last') return;
     var action = autosaveActionForField(t.id || '');
     if(!action) return;
     var btn = document.querySelector('[data-action="'+action+'"]');
