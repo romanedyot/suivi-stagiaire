@@ -1,4 +1,4 @@
-var CACHE = 'suivi-stagiaire-v2';
+var CACHE = 'suivi-stagiaire-v3';
 var SHELL = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'logo.png'];
 var CDN = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 
@@ -22,7 +22,7 @@ self.addEventListener('fetch', function(e){
   if(url.origin === location.origin){
     var isPage = req.mode === 'navigate' || url.pathname.endsWith('/index.html') || url.pathname.endsWith('/');
     if(isPage){
-      e.respondWith(fetch(req).then(function(res){
+      e.respondWith(fetch(req.url, {cache:'no-store'}).then(function(res){
         var copy = res.clone();
         caches.open(CACHE).then(function(c){ c.put('index.html', copy); });
         return res;

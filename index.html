@@ -210,6 +210,12 @@ tr:last-child td{ border-bottom:none; }
 .tab-btn.active{ color:var(--accent); border-bottom-color:var(--orange); }
 .tab-btn:hover{ color:var(--text); }
 .tab-btn.small{ padding:6px 10px; font-size:0.78rem; }
+.plan-tabs{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+.plan-btn{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; min-height:58px; padding:8px 6px; text-align:center; background:var(--surface); border:1.5px solid var(--border); border-radius:12px; cursor:pointer; color:var(--text); font-family:inherit; }
+.plan-btn .pb-main{ font-weight:700; font-size:0.92rem; }
+.plan-btn .pb-sub{ font-size:0.68rem; font-weight:500; color:var(--text-muted); }
+.plan-btn.active{ background:var(--accent-grad); border-color:var(--accent); color:var(--accent-contrast); }
+.plan-btn.active .pb-sub{ color:var(--accent-contrast); opacity:0.9; }
 .period-btn .pb-sub::before{ content:' ('; }
 .period-btn .pb-sub::after{ content:')'; }
 .readonly-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px 24px; }
@@ -361,6 +367,8 @@ body.is-offline .offline-banner{ display:block; }
 .ib-text{ flex:1; min-width:0; font-size:0.82rem; display:flex; flex-direction:column; line-height:1.3; }
 .ib-text span{ color:var(--text-muted); font-size:0.74rem; }
 .ib-close{ background:transparent; border:none; font-size:1.5rem; line-height:1; color:var(--text-muted); cursor:pointer; padding:0 4px; }
+.update-banner{ display:none; position:fixed; left:12px; right:12px; top:calc(10px + env(safe-area-inset-top)); z-index:110; max-width:520px; margin:0 auto; background:var(--surface); border:1.5px solid var(--accent); border-radius:14px; box-shadow:var(--shadow); padding:10px 12px; align-items:center; justify-content:space-between; gap:10px; font-size:0.86rem; font-weight:600; }
+.update-banner.show{ display:flex; }
 .install-cta{ width:100%; justify-content:center; margin-top:14px; background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
 .install-guide{ display:none; position:fixed; inset:0; z-index:120; background:rgba(10,18,50,0.55); align-items:center; justify-content:center; padding:20px; }
 .install-guide.show{ display:flex; }
@@ -408,6 +416,10 @@ body.is-offline .offline-banner{ display:block; }
 </div>
 <div id="ptr" class="ptr" aria-hidden="true"><span class="ptr-spin"></span></div>
 <div id="install-guide" class="install-guide"></div>
+<div id="update-banner" class="update-banner" role="status">
+  <span>Une nouvelle version est disponible.</span>
+  <button type="button" class="btn btn-primary btn-sm" id="update-btn">Mettre à jour</button>
+</div>
 <div id="root"></div>
 <div id="toast" class="toast"></div>
 <div id="print-area" class="print-area"></div>
@@ -814,13 +826,6 @@ body.is-offline .offline-banner{ display:block; }
       if(onlyIdx!=null && idx!==onlyIdx) return;
       var periodeLabel = periodeTitle(idx, st.suivis[idx] && st.suivis[idx].periode);
       blocks.push({type:'h2', text:periodeLabel});
-      blocks.push({type:'h3', text:'Types de tâches réalisées'});
-      if(d.taches && d.taches.length){
-        blocks.push({type:'table', headers:['Type de tâche','Volume horaire','Détails'], colFractions:[0.3,0.18,0.52],
-          rows: d.taches.map(function(t){ return [t.type||'—', t.volume||'—', t.details||'—']; })});
-      } else {
-        blocks.push({type:'p', text:'Aucune tâche renseignée.'});
-      }
       blocks.push({type:'p', label:'Compétences acquises par le/la stagiaire :', text: d.competencesAcquisesStagiaire});
       blocks.push({type:'p', label:'Difficultés rencontrées :', text: d.difficultesStagiaire});
       blocks.push({type:'p', label:'Autres remarques :', text: d.remarquesStagiaire});
@@ -1252,7 +1257,7 @@ body.is-offline .offline-banner{ display:block; }
     return Object.keys(obj).some(function(k){ return obj[k] !== '' && obj[k] != null; });
   }
   function stagiaireSheetFilled(d){
-    return !!(d && ((d.taches && d.taches.length) || d.competencesAcquisesStagiaire || d.difficultesStagiaire || d.remarquesStagiaire || hasValue(d.criteres1) || hasValue(d.uc)));
+    return !!(d && (d.competencesAcquisesStagiaire || d.difficultesStagiaire || d.remarquesStagiaire || hasValue(d.criteres1) || hasValue(d.uc)));
   }
   function tuteurSheetFilled(d){
     return !!(d && (d.tuteurCompetencesAcquises || d.tuteurDifficultes || d.tuteurRemarques || hasValue(d.criteresTuteur)));
@@ -1535,48 +1540,6 @@ body.is-offline .offline-banner{ display:block; }
     return '<h4 class="suivi-subtitle">'+esc(block.titre)+'</h4><div class="rating-list"><div class="rating-head"><span>Compétence</span><span>Niveau</span></div>'+rows+'</div>';
   }
 
-  function syncTasksBufferFromDom(){
-    if(!tasksEditBuffer) return;
-    tasksEditBuffer.forEach(function(t, ri){
-      var el = document.getElementById('tk-'+ri+'-type');
-      if(el){ t.type = getVal('tk-'+ri+'-type'); t.volume = getVal('tk-'+ri+'-volume'); t.details = getVal('tk-'+ri+'-details'); }
-    });
-  }
-  function ensureTasksBuffer(st, idx){
-    var key = st.id+'|'+idx;
-    if(!tasksEditBuffer || tasksEditBuffer._for !== key){
-      var clone = deepClone(st.evaluations[idx].taches);
-      if(!clone.length) clone.push({type:'',volume:'',details:''});
-      clone._for = key;
-      tasksEditBuffer = clone;
-    }
-    return tasksEditBuffer;
-  }
-
-  function renderTasksBlock(st, idx, editable){
-    var out = '<div class="field"><label style="margin-bottom:8px;">Types de tâches réalisées</label>';
-    if(editable){
-      var buf = ensureTasksBuffer(st, idx);
-      out += buf.map(function(t,ri){
-        return '<div class="doc-row"><div class="grow field" style="margin-bottom:0;"><input id="tk-'+ri+'-type" value="'+esc(t.type)+'" placeholder="Type de tâche" /></div>' +
-          '<div class="field" style="margin-bottom:0;max-width:140px;"><input id="tk-'+ri+'-volume" value="'+esc(t.volume)+'" placeholder="Volume horaire" /></div>' +
-          '<div class="grow field" style="margin-bottom:0;"><input id="tk-'+ri+'-details" value="'+esc(t.details)+'" placeholder="Détails" /></div>' +
-          '<button type="button" class="btn btn-sm" data-action="remove-task-row" data-idx="'+ri+'">Retirer</button></div>';
-      }).join('');
-      out += '<button type="button" class="btn btn-sm" data-action="add-task-row">+ Ajouter une tâche</button>';
-    } else {
-      var taches = st.evaluations[idx].taches;
-      if(!taches.length){ out += '<p class="ro-text" style="color:var(--text-muted);">Aucune tâche renseignée.</p>'; }
-      else {
-        out += '<div class="table-wrap"><table><thead><tr><th>Type de tâche</th><th>Volume horaire</th><th>Détails</th></tr></thead><tbody>' +
-          taches.map(function(t){ return '<tr><td>'+esc(t.type)+'</td><td>'+esc(t.volume)+'</td><td>'+esc(t.details)+'</td></tr>'; }).join('') +
-        '</tbody></table></div>';
-      }
-    }
-    out += '</div>';
-    return out;
-  }
-
   function periodSubTabs(dp){
     return [0,1,2].map(function(i){
       return '<button type="button" class="tab-btn small period-btn '+(dp===i?'active':'')+'" data-action="switch-detail-period" data-idx="'+i+'"><span class="pb-main">Période '+(i+1)+'</span><span class="pb-sub">'+TRIMESTRES[i]+'</span></button>';
@@ -1586,7 +1549,6 @@ body.is-offline .offline-banner{ display:block; }
   function renderDetailPeriodStagiaire(st, idx, editable){
     var d = st.evaluations[idx];
     var html = '';
-    html += renderTasksBlock(st, idx, editable);
     html += textBlock(idx,'competencesAcquisesStagiaire', d.competencesAcquisesStagiaire, 'Les compétences acquises par le/la stagiaire', editable);
     html += textBlock(idx,'difficultesStagiaire', d.difficultesStagiaire, 'Les difficultés rencontrées', editable);
     html += textBlock(idx,'remarquesStagiaire', d.remarquesStagiaire, 'Autres remarques', editable);
@@ -1661,9 +1623,18 @@ body.is-offline .offline-banner{ display:block; }
 
   function renderPlanningTab(st, editable){
     var canEdit = editable || view.role==='stagiaire';
+    var kind = view.planningKind === 'dojo' ? 'dojo' : 'structure';
+    function filled(list, field){ return (list||[]).some(function(r){ return r.horaires || r[field]; }); }
+    function btn(k, label, isFilled){
+      return '<button type="button" class="plan-btn '+(kind===k?'active':'')+'" data-action="switch-planning" data-kind="'+k+'">' +
+        '<span class="pb-main">'+label+'</span><span class="pb-sub">'+(isFilled ? 'Rempli' : 'À remplir')+'</span></button>';
+    }
+    var block = kind==='dojo'
+      ? '<div class="planning-block"><h3>Planning à Dojo Academy</h3>' + planningTable(st.planningDojo, 'dojo', canEdit) + '</div>'
+      : '<div class="planning-block"><h3>Planning en structure d’accueil</h3>' + planningTable(st.planningStructure, 'structure', canEdit) + '</div>';
     return '' +
-    '<div class="planning-block"><h3>Planning en structure d’accueil</h3>' + planningTable(st.planningStructure, 'structure', canEdit) + '</div>' +
-    '<div class="planning-block"><h3>Planning à Dojo Academy</h3>' + planningTable(st.planningDojo, 'dojo', canEdit) + '</div>' +
+    '<div class="plan-tabs">' + btn('structure', 'Planning structure', filled(st.planningStructure,'activite')) + btn('dojo', 'Planning Dojo Academy', filled(st.planningDojo,'module')) + '</div>' +
+    block +
     '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">' +
       (canEdit ? '<button type="button" class="btn btn-primary" data-action="save-planning" data-id="'+esc(st.id)+'">Enregistrer le planning</button>' : '') +
       '<button type="button" class="btn btn-sm" data-action="print-planning" data-id="'+esc(st.id)+'">Télécharger (PDF)</button>' +
@@ -2420,25 +2391,10 @@ body.is-offline .offline-banner{ display:block; }
         });
       }); return;
     }
-    if(action==='add-task-row'){
-      syncTasksBufferFromDom();
-      tasksEditBuffer.push({type:'',volume:'',details:''});
-      render(); return;
-    }
-    if(action==='remove-task-row'){
-      syncTasksBufferFromDom();
-      var ti = parseInt(el.getAttribute('data-idx'),10);
-      tasksEditBuffer.splice(ti,1);
-      render(); return;
-    }
     if(action==='save-detail-stagiaire'){
       var pidxS = parseInt(el.getAttribute('data-idx'),10);
-      syncTasksBufferFromDom();
-      var cleanedTasks = (tasksEditBuffer||[]).filter(function(t){ return t.type || t.volume || t.details; }).map(function(t){ return {type:t.type,volume:t.volume,details:t.details}; });
-      tasksEditBuffer = null;
       updateStagiaire(id, function(s){
         var d = s.evaluations[pidxS];
-        d.taches = cleanedTasks;
         d.competencesAcquisesStagiaire = getVal('d-'+pidxS+'-competencesAcquisesStagiaire');
         d.difficultesStagiaire = getVal('d-'+pidxS+'-difficultesStagiaire');
         d.remarquesStagiaire = getVal('d-'+pidxS+'-remarquesStagiaire');
@@ -2545,9 +2501,12 @@ body.is-offline .offline-banner{ display:block; }
     }
     if(action==='save-planning'){
       updateStagiaire(id, function(s){
-        s.planningStructure.forEach(function(row, idx){ row.horaires = getVal('pS-'+idx+'-h'); row.activite = getVal('pS-'+idx+'-a'); });
-        s.planningDojo.forEach(function(row, idx){ row.horaires = getVal('pD-'+idx+'-h'); row.module = getVal('pD-'+idx+'-a'); });
+        s.planningStructure.forEach(function(row, idx){ if(!document.getElementById('pS-'+idx+'-h')) return; row.horaires = getVal('pS-'+idx+'-h'); row.activite = getVal('pS-'+idx+'-a'); });
+        s.planningDojo.forEach(function(row, idx){ if(!document.getElementById('pD-'+idx+'-h')) return; row.horaires = getVal('pD-'+idx+'-h'); row.module = getVal('pD-'+idx+'-a'); });
       }); return;
+    }
+    if(action==='switch-planning'){
+      view.planningKind = el.getAttribute('data-kind'); saveView(); render(); animateIn(); return;
     }
     if(action==='edit-documents'){
       var s0 = findStagiaire(id);
@@ -2816,6 +2775,32 @@ body.is-offline .offline-banner{ display:block; }
 
   if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
     navigator.serviceWorker.register('sw.js').catch(function(){});
+  }
+
+  // Détection d'une nouvelle version (l'appli installée peut rester ouverte en arrière-plan avec une ancienne version)
+  var pageUrl = location.href.split('#')[0].split('?')[0];
+  var loadedSig = null, updateShown = false;
+  function pageSignature(noStore){
+    return fetch(pageUrl + '?v=' + Date.now(), noStore ? {cache:'no-store'} : {}).then(function(r){ return r.ok ? r.text() : null; }).then(function(t){
+      if(!t) return null;
+      var h = 0; for(var i=0;i<t.length;i++){ h = (h*31 + t.charCodeAt(i)) | 0; }
+      return h + ':' + t.length;
+    }).catch(function(){ return null; });
+  }
+  function checkForUpdate(){
+    if(updateShown || navigator.onLine === false || loadedSig === null) return;
+    pageSignature(true).then(function(sig){
+      if(sig && sig !== loadedSig){
+        updateShown = true;
+        document.getElementById('update-banner').classList.add('show');
+      }
+    });
+  }
+  document.getElementById('update-btn').addEventListener('click', function(){ location.reload(); });
+  if(location.protocol.indexOf('http')===0){
+    pageSignature(false).then(function(sig){ loadedSig = sig; setTimeout(checkForUpdate, 3000); });
+    document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') checkForUpdate(); });
+    setInterval(checkForUpdate, 5*60*1000);
   }
 
   function init(){
