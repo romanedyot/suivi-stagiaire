@@ -198,6 +198,10 @@ tr:last-child td{ border-bottom:none; }
 .photo-box img{ width:100%; height:100%; object-fit:cover; display:block; }
 .photo-box-editable{ cursor:pointer; }
 .photo-box-editable:hover{ border-color:var(--accent); }
+.photo-field{ display:inline-flex; align-items:center; gap:10px; cursor:pointer; margin:0; }
+.photo-label{ display:flex; flex-direction:column; line-height:1.25; color:var(--text); font-size:0.9rem; }
+.photo-label small{ color:var(--text-muted); font-size:0.72rem; font-weight:500; }
+.photo-field:hover .photo-box{ border-color:var(--accent); }
 .photo-placeholder{ font-size:2.2rem; color:var(--text-muted); line-height:1; }
 .move-formation{ display:flex; gap:8px; align-items:center; max-width:380px; margin:10px 0 20px; }
 .move-formation select{ flex:1; }
@@ -322,6 +326,19 @@ tr:last-child td{ border-bottom:none; }
   .btn-sm{ min-height:38px; }
   .tab-btn{ min-height:42px; }
   .install-banner{ bottom:calc(96px + env(safe-area-inset-bottom)); }
+  .layout{ padding-left:10px; padding-right:10px; padding-top:16px; }
+  .topbar{ padding-left:14px; padding-right:14px; }
+  .card{ padding:14px 12px; border-radius:14px; }
+  .period-card{ padding:12px 12px; }
+  .planning-block .table-wrap{ border:none; box-shadow:none; background:transparent; overflow:visible; border-radius:0; }
+  .planning-block table, .planning-block tbody{ display:block; }
+  .planning-block thead{ display:none; }
+  .planning-block tr{ display:block; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 12px 6px; margin-bottom:10px; box-shadow:var(--shadow); }
+  .planning-block td{ display:block; border:none; padding:3px 0 6px; }
+  .planning-block td:first-child{ font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:1rem; padding-bottom:4px; }
+  .planning-block td[data-label]::before{ content:attr(data-label); display:block; font-size:0.72rem; font-weight:600; color:var(--text-muted); margin-bottom:3px; }
+  .doc-row .grow, .doc-row .field{ flex:1 1 100%; max-width:none !important; }
+  .readonly-grid{ gap:12px 0; }
 }
 body{ -webkit-tap-highlight-color:transparent; }
 button,.btn,.tab-btn,.row-click,.bn-item,a{ touch-action:manipulation; }
@@ -1380,7 +1397,9 @@ body.is-offline .offline-banner{ display:block; }
       ? '<img src="'+esc(st.photo)+'" alt="Photo de '+esc(fullName(st))+'" />'
       : '<span class="photo-placeholder">+</span>';
     if(!canEdit) return '<div class="photo-box">'+inner+'</div>';
-    return '<label class="photo-box photo-box-editable" title="Ajouter ou changer la photo">' + inner +
+    return '<label class="photo-field" title="Ajouter ou changer la photo">' +
+      '<span class="photo-box photo-box-editable">' + inner + '</span>' +
+      '<span class="photo-label"><strong>Photo</strong><small>'+(st.photo ? 'Touchez pour changer' : 'Touchez pour ajouter')+'</small></span>' +
       '<input type="file" accept="image/*" data-action="upload-photo" data-id="'+esc(st.id)+'" style="display:none;" />' +
     '</label>';
   }
@@ -1586,18 +1605,18 @@ body.is-offline .offline-banner{ display:block; }
   }
 
   function renderSuiviStagiaireTab(st, editable){
-    var quickCards = st.suivis.map(function(p,idx){ return periodQuickCard(p, idx, editable); }).join('');
     var dp = view.detailPeriod || 0;
+    var quickCard = st.suivis[dp] ? periodQuickCard(st.suivis[dp], dp, editable) : '';
     var canEditStagiaire = editable || view.role==='stagiaire';
     var showQuick = view.role!=='stagiaire' && view.role!=='tuteur';
     return '' +
+      '<div class="tabs" style="margin-bottom:16px;">'+periodSubTabs(dp)+'</div>' +
       (showQuick ? '<h3 class="suivi-section-title">Suivi rapide</h3>' +
-        quickCards +
+        quickCard +
         (editable ? '<button type="button" class="btn btn-primary" data-action="save-suivi" data-id="'+esc(st.id)+'">Enregistrer le suivi rapide</button>' : '') : '') +
       '<div class="suivi-tab-head" style="margin-top:'+(showQuick ? '32px' : '0')+';"><h3 class="suivi-section-title" style="margin:0;">Feuille de suivi stagiaire</h3>' +
       '<button type="button" class="btn btn-sm" data-action="print-stagiaire-sheet" data-id="'+esc(st.id)+'">Télécharger la période '+(dp+1)+' (PDF)</button></div>' +
       '<p class="hint-banner">Cette partie est renseignée par le/la stagiaire (avec les tâches réalisées, son propre ressenti sur la période, les grilles de critères et le référentiel de compétences).</p>' +
-      '<div class="tabs" style="margin-bottom:16px;">'+periodSubTabs(dp)+'</div>' +
       renderDetailPeriodStagiaire(st, dp, canEditStagiaire);
   }
 
@@ -1619,14 +1638,14 @@ body.is-offline .offline-banner{ display:block; }
     if(editable){
       var rows = list.map(function(row,idx){
         return '<tr><td>'+row.jour+'</td>' +
-          '<td><input id="'+prefix+idx+'-h" value="'+esc(row.horaires)+'" placeholder="ex. 9h-17h" /></td>' +
-          '<td><input id="'+prefix+idx+'-a" value="'+esc(row[field])+'" placeholder="ex. '+(kind==='structure'?'Encadrement cours enfants':'Pédagogie sportive')+'" /></td></tr>';
+          '<td data-label="Horaires"><input id="'+prefix+idx+'-h" value="'+esc(row.horaires)+'" placeholder="ex. 9h-17h" /></td>' +
+          '<td data-label="'+labelCol+'"><input id="'+prefix+idx+'-a" value="'+esc(row[field])+'" placeholder="ex. '+(kind==='structure'?'Encadrement cours enfants':'Pédagogie sportive')+'" /></td></tr>';
       }).join('');
       return '<div class="table-wrap"><table><thead><tr><th>Jour</th><th>Horaires</th><th>'+labelCol+'</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
     }
     var filtered = list.filter(function(r){ return r.horaires || r[field]; });
     if(!filtered.length) return '<p class="ro-text" style="color:var(--text-muted);">Aucun créneau renseigné.</p>';
-    var rows2 = filtered.map(function(row){ return '<tr><td>'+esc(row.jour)+'</td><td>'+esc(row.horaires)+'</td><td>'+esc(row[field])+'</td></tr>'; }).join('');
+    var rows2 = filtered.map(function(row){ return '<tr><td>'+esc(row.jour)+'</td><td data-label="Horaires">'+esc(row.horaires)+'</td><td data-label="'+labelCol+'">'+esc(row[field])+'</td></tr>'; }).join('');
     return '<div class="table-wrap"><table><thead><tr><th>Jour</th><th>Horaires</th><th>'+labelCol+'</th></tr></thead><tbody>'+rows2+'</tbody></table></div>';
   }
 
@@ -2375,6 +2394,7 @@ body.is-offline .offline-banner{ display:block; }
     if(action==='save-suivi'){
       updateStagiaire(id, function(s){
         s.suivis.forEach(function(p, idx){
+          if(!document.getElementById('s-'+idx+'-dateVisite')) return;
           p.dateVisite = getVal('s-'+idx+'-dateVisite');
           p.prochaineVisite = getVal('s-'+idx+'-prochaineVisite');
           p.risque = getVal('s-'+idx+'-risque');

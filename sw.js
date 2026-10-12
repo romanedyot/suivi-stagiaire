@@ -1,4 +1,4 @@
-var CACHE = 'suivi-stagiaire-v1';
+var CACHE = 'suivi-stagiaire-v2';
 var SHELL = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'logo.png'];
 var CDN = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 
