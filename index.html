@@ -379,6 +379,8 @@ body.is-offline .offline-banner{ display:block; }
 .ib-text span{ color:var(--text-muted); font-size:0.74rem; }
 .ib-close{ background:transparent; border:none; font-size:1.5rem; line-height:1; color:var(--text-muted); cursor:pointer; padding:0 4px; }
 #undo-slot{ display:inline-flex; gap:6px; }
+.show-pass{ display:flex; align-items:center; gap:8px; margin:8px 0 0; font-size:0.8rem; font-weight:500; cursor:pointer; color:var(--text-muted); }
+.show-pass input{ width:auto; margin:0; box-shadow:none; }
 .update-banner{ display:none; position:fixed; left:12px; right:12px; top:calc(10px + env(safe-area-inset-top)); z-index:110; max-width:520px; margin:0 auto; background:var(--surface); border:1.5px solid var(--accent); border-radius:14px; box-shadow:var(--shadow); padding:10px 12px; align-items:center; justify-content:space-between; gap:10px; font-size:0.86rem; font-weight:600; }
 .update-banner.show{ display:flex; }
 .install-cta{ width:100%; justify-content:center; margin-top:14px; background:var(--accent-soft); border-color:var(--accent); color:var(--accent); }
@@ -428,6 +430,12 @@ body.is-offline .offline-banner{ display:block; }
 </div>
 <div id="ptr" class="ptr" aria-hidden="true"><span class="ptr-spin"></span></div>
 <div id="install-guide" class="install-guide"></div>
+<div id="notif-banner" class="install-banner" role="dialog" aria-label="Notifications">
+  <img src="icon-192.png" alt="" class="ib-icon" />
+  <div class="ib-text"><strong>Notifications</strong><span id="notif-text"></span></div>
+  <button type="button" class="btn btn-primary btn-sm" id="notif-enable" data-action="notif-banner-enable">Activer</button>
+  <button type="button" class="ib-close" data-action="notif-banner-later" aria-label="Plus tard">×</button>
+</div>
 <div id="update-banner" class="update-banner" role="status">
   <span>Une nouvelle version est disponible.</span>
   <button type="button" class="btn btn-primary btn-sm" id="update-btn">Mettre à jour</button>
@@ -997,19 +1005,42 @@ body.is-offline .offline-banner{ display:block; }
       return res.data;
     }).catch(function(){ return null; });
   }
+  // Tolère les petites différences de saisie sur téléphone (espace ajouté par le clavier, majuscule automatique)
+  function passwordVariants(p){
+    var list = [p];
+    function add(x){ if(x && list.indexOf(x)===-1) list.push(x); }
+    var t = p.trim();
+    add(t); add(t+' ');
+    add(t.charAt(0).toLowerCase()+t.slice(1));
+    add(t.charAt(0).toUpperCase()+t.slice(1));
+    return list;
+  }
+  function tryLoginTolerant(idf, pwd){
+    var variants = passwordVariants(pwd);
+    function next(i){
+      if(i>=variants.length) return Promise.resolve(null);
+      return tryLogin(idf, variants[i]).then(function(r){ return r ? r : next(i+1); });
+    }
+    return next(0);
+  }
   function doLogin(){
     var idf = getVal('login-identifiant');
     var pwd = getVal('login-motdepasse');
     if(!idf || !pwd){ showToast('Merci de renseigner votre identifiant et votre mot de passe.'); return; }
-    tryLogin(idf, pwd).then(function(result){
+    tryLoginTolerant(idf, pwd).then(function(result){
       if(!result){ showToast('Identifiant ou mot de passe incorrect.'); return; }
       if(result.status==='needs-setup'){
         view = { screen:'setup-password', role:result.role, profileId:result.profileId, selectedFormation:null, selectedId:null, tab:'infos', showAdd:false, detailPeriod:0 };
         saveView(); render(); return;
       }
       view = { screen:'app', role:result.role, profileId:result.profileId, selectedFormation:null, selectedId:null, tab:'infos', showAdd:false, detailPeriod:0 };
-      saveView(); render();
+      saveView(); render(); afterLogin();
     });
+  }
+  function afterLogin(){
+    applyPendingOpen();
+    refreshSubscriptionIfGranted();
+    setTimeout(maybeShowNotifBanner, 1500);
   }
   function applyPasswordReset(target, newPass){
     return sb.rpc('rpc_set_password', { p_kind: target.kind, p_id: target.id, p_new_password: newPass }).then(function(res){
@@ -1109,27 +1140,93 @@ body.is-offline .offline-banner{ display:block; }
     return sb.rpc('rpc_update_stagiaire', { p_id: id, p_patch: patch });
   }
 
-  function updateStagiaire(id, mutator, successMsg){
+  // Différences précises entre deux versions d'une fiche (chemin → nouvelle valeur), pour ne modifier que ce qui a réellement changé.
+  function diffPaths(a, b, path, out){
+    if(JSON.stringify(a) === JSON.stringify(b)) return;
+    var aObj = a && typeof a === 'object', bObj = b && typeof b === 'object';
+    if(aObj && bObj && Array.isArray(a) === Array.isArray(b)){
+      if(Array.isArray(a)){
+        if(a.length !== b.length){
+          out.push({ path: path, value: b, added: (path.length===1 && path[0]==='messages' && b.length>a.length) ? b.slice(a.length) : null });
+          return;
+        }
+        for(var i=0;i<a.length;i++){ diffPaths(a[i], b[i], path.concat(i), out); }
+        return;
+      }
+      var keys = {}; Object.keys(a).forEach(function(k){ keys[k]=1; }); Object.keys(b).forEach(function(k){ keys[k]=1; });
+      Object.keys(keys).forEach(function(k){ diffPaths(a[k], b[k], path.concat(k), out); });
+      return;
+    }
+    out.push({ path: path, value: b, added: null });
+  }
+  function applyOps(target, ops){
+    ops.forEach(function(op){
+      if(op.added){
+        var cur = target.messages || [];
+        var known = {}; cur.forEach(function(m){ known[(m.date||'')+'|'+(m.auteur||'')+'|'+(m.texte||'')] = 1; });
+        target.messages = cur.concat(op.added.filter(function(m){ return !known[(m.date||'')+'|'+(m.auteur||'')+'|'+(m.texte||'')]; }));
+        return;
+      }
+      var node = target;
+      for(var i=0;i<op.path.length-1;i++){
+        var k = op.path[i];
+        if(node[k] === undefined || node[k] === null || typeof node[k] !== 'object'){ node[k] = (typeof op.path[i+1] === 'number') ? [] : {}; }
+        node = node[k];
+      }
+      node[op.path[op.path.length-1]] = deepClone(op.value);
+    });
+  }
+
+  function updateStagiaire(id, mutator, successMsg, onSaved){
     var st = findStagiaire(id);
     if(!st) return;
     var clone = deepClone(st);
     mutator(clone);
     var changed = STAGIAIRE_PATCH_FIELDS.filter(function(k){ return JSON.stringify(st[k]) !== JSON.stringify(clone[k]); });
+    var ops = [];
+    STAGIAIRE_PATCH_FIELDS.forEach(function(k){ diffPaths(st[k], clone[k], [k], ops); });
     var idx = DATA.stagiaires.findIndex(function(x){ return x.id===id; });
     if(idx>=0) DATA.stagiaires[idx] = clone;
     saveView();
     render();
-    var patch = {};
-    STAGIAIRE_PATCH_FIELDS.forEach(function(k){ patch[k] = clone[k]; });
-    sb.rpc('rpc_update_stagiaire', { p_id: id, p_patch: patch }).then(function(res){
-      if(res.error){ showToast('Enregistrement impossible : '+res.error.message); return; }
+
+    function finish(){
       if(changed.length){
         pushUndo('Modification de '+fullName(clone),
           function(){ return restoreStagiaireFields(id, st, changed); },
           function(){ return restoreStagiaireFields(id, clone, changed); });
       }
       if(successMsg !== null){ showToast(successMsg || 'Enregistré.'); }
-    });
+      if(onSaved) onSaved();
+    }
+    if(!ops.length){ finish(); return; }
+
+    // On repart de la version la plus récente enregistrée, puis on y applique uniquement ce que l'on vient de modifier :
+    // une page restée ouverte longtemps ne peut ainsi plus effacer les saisies faites entre-temps par quelqu'un d'autre.
+    sb.from('stagiaires').select('*').eq('id', id).maybeSingle().then(function(res){
+      var merged, patch = {};
+      if(res.error || !res.data){
+        merged = clone;
+        STAGIAIRE_PATCH_FIELDS.forEach(function(k){ patch[k] = clone[k]; });
+      } else {
+        var fresh = rowToStagiaire(res.data);
+        merged = deepClone(fresh);
+        applyOps(merged, ops);
+        STAGIAIRE_PATCH_FIELDS.forEach(function(k){ if(JSON.stringify(merged[k]) !== JSON.stringify(fresh[k])) patch[k] = merged[k]; });
+      }
+      if(!Object.keys(patch).length){ finish(); return; }
+      return sb.rpc('rpc_update_stagiaire', { p_id: id, p_patch: patch }).then(function(r){
+        if(r.error){ showToast('Enregistrement impossible : '+r.error.message); return; }
+        if(merged !== clone){
+          var i2 = DATA.stagiaires.findIndex(function(x){ return x.id===id; });
+          if(i2>=0 && JSON.stringify(DATA.stagiaires[i2]) !== JSON.stringify(merged)){
+            DATA.stagiaires[i2] = merged;
+            if(!isTyping()) render();
+          }
+        }
+        finish();
+      });
+    }).catch(function(){ showToast('Enregistrement impossible : connexion indisponible.'); });
   }
 
   var toastTimer = null;
@@ -1162,7 +1259,8 @@ body.is-offline .offline-banner{ display:block; }
       '<div class="login-card">' +
         '<h3>Connexion</h3>' +
         '<div class="field"><label for="login-identifiant">Identifiant (pseudo ou e-mail)</label><input id="login-identifiant" type="text" autocomplete="username" /></div>' +
-        '<div class="field"><label for="login-motdepasse">Mot de passe</label><input id="login-motdepasse" type="password" autocomplete="current-password" /></div>' +
+        '<div class="field"><label for="login-motdepasse">Mot de passe</label><input id="login-motdepasse" type="password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" />' +
+          '<label class="show-pass"><input type="checkbox" data-action="toggle-pass" data-target="login-motdepasse" /> Afficher le mot de passe</label></div>' +
         '<button type="button" class="btn btn-primary" data-action="submit-login" style="width:100%;">Se connecter</button>' +
       '</div>' +
       '<p class="hint-banner" style="margin-top:20px;">Vous ne connaissez pas vos identifiants, ou vous avez oublié votre mot de passe ? Contactez votre référent '+esc(ORG.nom)+'.</p>' +
@@ -1180,8 +1278,9 @@ body.is-offline .offline-banner{ display:block; }
       '<div class="login-card">' +
         '<h3>Bienvenue !</h3>' +
         '<p class="hint-banner">C’est votre première connexion en tant que ' + label + '. Choisissez le mot de passe que vous utiliserez désormais pour vous connecter.</p>' +
-        '<div class="field"><label for="setup-new-pass">Nouveau mot de passe</label><input id="setup-new-pass" type="password" autocomplete="new-password" /></div>' +
-        '<div class="field"><label for="setup-new-pass2">Confirmer le mot de passe</label><input id="setup-new-pass2" type="password" autocomplete="new-password" /></div>' +
+        '<div class="field"><label for="setup-new-pass">Nouveau mot de passe</label><input id="setup-new-pass" type="password" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" /></div>' +
+        '<div class="field"><label for="setup-new-pass2">Confirmer le mot de passe</label><input id="setup-new-pass2" type="password" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" />' +
+          '<label class="show-pass"><input type="checkbox" data-action="toggle-pass" data-target="setup-new-pass,setup-new-pass2" /> Afficher le mot de passe</label></div>' +
         '<button type="button" class="btn btn-primary" data-action="submit-setup-password" style="width:100%;">Valider et me connecter</button>' +
       '</div>' +
     '</div>';
@@ -1231,7 +1330,24 @@ body.is-offline .offline-banner{ display:block; }
         '<button type="button" class="btn btn-ghost" data-action="close-account-panel">Annuler</button>' +
       '</div>' +
       '<p class="hint-banner" style="margin-top:14px;margin-bottom:0;">Votre mot de passe est chiffré et n’est jamais visible, y compris par le référent.</p>' +
+      notificationsBlockHtml() +
     '</div></div>';
+  }
+  function notificationsBlockHtml(){
+    if(!ORG.pushPublicKey || (view.role!=='stagiaire' && view.role!=='referent')) return '';
+    var body;
+    if(!pushSupported()){
+      body = '<p class="ro-text" style="color:var(--text-muted);">'+esc(notifUnsupportedText())+'</p>';
+    } else if(Notification.permission==='granted'){
+      body = '<p class="ro-text">Notifications activées sur cet appareil.</p>' +
+        '<button type="button" class="btn btn-sm" data-action="disable-notifications">Désactiver</button>';
+    } else if(Notification.permission==='denied'){
+      body = '<p class="ro-text" style="color:var(--text-muted);">Les notifications sont bloquées pour cette appli. Autorisez-les dans les réglages de votre téléphone, puis revenez ici.</p>';
+    } else {
+      body = '<button type="button" class="btn btn-primary btn-sm" data-action="enable-notifications">Activer les notifications</button>';
+    }
+    return '<div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border);"><h3 style="margin-bottom:8px;">Notifications</h3>' +
+      '<p class="hint-banner" style="margin-bottom:10px;">Recevez une notification sur votre téléphone quand vous avez un nouveau message.</p>' + body + '</div>';
   }
 
   function renderApp(){
@@ -2211,6 +2327,16 @@ body.is-offline .offline-banner{ display:block; }
     var id = el.getAttribute('data-id');
 
     if(action==='submit-login'){ doLogin(); return; }
+    if(action==='enable-notifications'){ enableNotifications().then(function(){ render(); }); return; }
+    if(action==='disable-notifications'){ disableNotifications().then(function(){ render(); showToast('Notifications désactivées.'); }); return; }
+    if(action==='notif-banner-enable'){ hideNotifBanner(); enableNotifications().then(function(){ render(); }); return; }
+    if(action==='notif-banner-later'){ hideNotifBanner(true); return; }
+    if(action==='toggle-pass'){
+      (el.getAttribute('data-target')||'').split(',').forEach(function(tid){
+        var f = document.getElementById(tid); if(f) f.type = el.checked ? 'text' : 'password';
+      });
+      return;
+    }
     if(action==='open-install'){ openInstall(); return; }
     if(action==='close-install-guide'){ closeInstallGuide(); return; }
     if(action==='copy-site-link'){
@@ -2245,14 +2371,15 @@ body.is-offline .offline-banner{ display:block; }
       return;
     }
     if(action==='change-profile'){
+      forgetSubscriptionOnThisDevice(); hideNotifBanner();
       undoStack.length = 0; redoStack.length = 0;
       docEditBuffer = null; tasksEditBuffer = null; visiteEditBuffer = null;
       view = { screen:'login', role:null, profileId:null, selectedFormation:null, selectedId:null, tab:'infos', showAdd:false, detailPeriod:0 };
       saveView(); render(); return;
     }
     if(action==='submit-setup-password'){
-      var snp = getVal('setup-new-pass');
-      var snp2 = getVal('setup-new-pass2');
+      var snp = getVal('setup-new-pass').trim();
+      var snp2 = getVal('setup-new-pass2').trim();
       if(!snp || snp.length<4){ showToast('Le mot de passe doit contenir au moins 4 caractères.'); return; }
       if(snp!==snp2){ showToast('Les deux mots de passe ne correspondent pas.'); return; }
       var setupRole = view.role, setupProfileId = view.profileId;
@@ -2260,7 +2387,7 @@ body.is-offline .offline-banner{ display:block; }
       applyPasswordReset({kind:setupKind, id:setupProfileId}, snp).then(function(ok){
         if(!ok){ showToast('Le mot de passe n’a pas pu être défini.'); return; }
         view = { screen:'app', role:setupRole, profileId:setupProfileId, selectedFormation:null, selectedId:null, tab:'infos', showAdd:false, detailPeriod:0 };
-        saveView(); render();
+        saveView(); render(); afterLogin();
       });
       return;
     }
@@ -2272,8 +2399,8 @@ body.is-offline .offline-banner{ display:block; }
     }
     if(action==='submit-change-password'){
       var accCur = getVal('acc-current');
-      var accNew = getVal('acc-new');
-      var accNew2 = getVal('acc-new2');
+      var accNew = getVal('acc-new').trim();
+      var accNew2 = getVal('acc-new2').trim();
       if(!accNew || accNew.length<4){ showToast('Le nouveau mot de passe doit contenir au moins 4 caractères.'); return; }
       if(accNew!==accNew2){ showToast('Les deux mots de passe ne correspondent pas.'); return; }
       var ownKind = view.role==='stagiaire' ? 'stagiaire' : 'compte';
@@ -2606,7 +2733,7 @@ body.is-offline .offline-banner{ display:block; }
       var a = actorInfo();
       updateStagiaire(id, function(s){
         s.messages.push({ auteur:a.auteur, role:a.roleKey, date:new Date().toISOString(), texte:txt });
-      }, 'Message envoyé.');
+      }, 'Message envoyé.', function(){ notifyMessage(id); });
       return;
     }
     if(action==='save-referent-contact'){
@@ -2844,6 +2971,124 @@ body.is-offline .offline-banner{ display:block; }
     navigator.serviceWorker.register('sw.js').catch(function(){});
   }
 
+  // ---------- notifications (messagerie) ----------
+  var PUSH_KEY = ORG.pushPublicKey || '';
+  var PUSH_URL = ORG.pushFunctionUrl || '';
+  var NOTIF_LATER_KEY = 'notifLater_'+ORG.id;
+  var pendingOpen = null;
+  function pushSupported(){
+    return !!(PUSH_KEY && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && location.protocol.indexOf('http')===0);
+  }
+  function notifUnsupportedText(){
+    if(isIOSDevice() && !isStandalone) return 'Sur iPhone, ajoutez d’abord l’application à votre écran d’accueil pour recevoir des notifications.';
+    return 'Les notifications ne sont pas disponibles sur cet appareil ou ce navigateur.';
+  }
+  function b64ToUint8(b64){
+    var pad = new Array((4 - b64.length % 4) % 4 + 1).join('=');
+    var raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+    var out = new Uint8Array(raw.length);
+    for(var i=0;i<raw.length;i++){ out[i] = raw.charCodeAt(i); }
+    return out;
+  }
+  function pushOwner(){
+    if(view.role==='stagiaire') return { kind:'stagiaire', id:view.profileId };
+    if(view.role==='referent') return { kind:'compte', id:view.profileId };
+    return null;
+  }
+  function saveSubscription(sub){
+    var o = pushOwner();
+    if(!o || !sub) return Promise.resolve(null);
+    var j = sub.toJSON();
+    return sb.rpc('rpc_save_push_subscription', { p_kind:o.kind, p_id:o.id, p_endpoint:j.endpoint, p_p256dh:j.keys.p256dh, p_auth:j.keys.auth });
+  }
+  function enableNotifications(){
+    if(!pushSupported()){ showToast(notifUnsupportedText()); return Promise.resolve(false); }
+    return Notification.requestPermission().then(function(perm){
+      if(perm !== 'granted'){ showToast('Notifications non autorisées. Vous pouvez les activer dans les réglages du téléphone.'); return false; }
+      return navigator.serviceWorker.ready.then(function(reg){
+        return reg.pushManager.getSubscription().then(function(existing){
+          return existing || reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:b64ToUint8(PUSH_KEY) });
+        });
+      }).then(saveSubscription).then(function(r){
+        if(r && r.error){ showToast('Impossible d’activer les notifications : '+r.error.message); return false; }
+        showToast('Notifications activées.');
+        return true;
+      });
+    }).catch(function(){ showToast('Impossible d’activer les notifications sur cet appareil.'); return false; });
+  }
+  function disableNotifications(){
+    if(!pushSupported()) return Promise.resolve();
+    return navigator.serviceWorker.ready.then(function(reg){ return reg.pushManager.getSubscription(); }).then(function(sub){
+      if(!sub) return null;
+      var ep = sub.endpoint;
+      return sub.unsubscribe().then(function(){ return sb.rpc('rpc_delete_push_subscription', { p_endpoint: ep }); });
+    }).catch(function(){});
+  }
+  function forgetSubscriptionOnThisDevice(){
+    if(!pushSupported()) return;
+    navigator.serviceWorker.ready.then(function(reg){ return reg.pushManager.getSubscription(); }).then(function(sub){
+      if(sub) sb.rpc('rpc_delete_push_subscription', { p_endpoint: sub.endpoint });
+    }).catch(function(){});
+  }
+  function refreshSubscriptionIfGranted(){
+    if(!pushSupported() || Notification.permission !== 'granted' || !pushOwner()) return;
+    navigator.serviceWorker.ready.then(function(reg){ return reg.pushManager.getSubscription(); }).then(function(sub){
+      if(sub) saveSubscription(sub);
+    }).catch(function(){});
+  }
+  function notifyMessage(stagiaireId){
+    if(!PUSH_URL) return;
+    fetch(PUSH_URL, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ stagiaireId: stagiaireId }) }).catch(function(){});
+  }
+  function hideNotifBanner(remember){
+    var b = document.getElementById('notif-banner');
+    if(b) b.classList.remove('show');
+    if(remember){ try{ localStorage.setItem(NOTIF_LATER_KEY, String(Date.now())); }catch(e){} }
+  }
+  function maybeShowNotifBanner(){
+    var b = document.getElementById('notif-banner');
+    if(!b || !PUSH_KEY || view.screen!=='app' || !pushOwner()) return;
+    try{ var t = parseInt(localStorage.getItem(NOTIF_LATER_KEY)||'0', 10); if(t && Date.now()-t < 3*24*3600*1000) return; }catch(e){}
+    var txt = document.getElementById('notif-text'), btn = document.getElementById('notif-enable');
+    if(pushSupported() && Notification.permission === 'default'){
+      txt.textContent = 'Recevez une notification sur votre téléphone quand vous avez un nouveau message.';
+      btn.textContent = 'Activer'; btn.setAttribute('data-action', 'notif-banner-enable');
+      b.classList.add('show');
+    } else if(isIOSDevice() && !isStandalone && !pushSupported()){
+      txt.textContent = 'Pour recevoir les notifications sur iPhone, ajoutez l’application à votre écran d’accueil.';
+      btn.textContent = 'Comment faire'; btn.setAttribute('data-action', 'open-install');
+      b.classList.add('show');
+    }
+  }
+  (function readOpenParam(){
+    try{
+      var p = new URLSearchParams(location.search);
+      if(p.get('open') === 'messages'){ pendingOpen = { tab:'messages', stagiaire: p.get('stagiaire') || null }; history.replaceState(null, '', location.pathname); }
+    }catch(e){}
+  })();
+  function applyPendingOpen(){
+    if(!pendingOpen || view.screen !== 'app') return false;
+    if(isFullAccess()){
+      var st = pendingOpen.stagiaire ? findStagiaire(pendingOpen.stagiaire) : null;
+      if(!st) { if(pendingOpen.stagiaire && !DATA.stagiaires.length) return false; pendingOpen = null; return false; }
+      view.selectedId = st.id; view.selectedFormation = st.formation;
+    }
+    view.tab = 'messages'; view.detailPeriod = 0;
+    pendingOpen = null; saveView(); render();
+    return true;
+  }
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.addEventListener('message', function(e){
+      if(e.data && e.data.type === 'open-messages'){
+        try{
+          var p = new URL(e.data.url).searchParams;
+          pendingOpen = { tab:'messages', stagiaire: p.get('stagiaire') || null };
+          applyPendingOpen();
+        }catch(err){}
+      }
+    });
+  }
+
   // Détection d'une nouvelle version (l'appli installée peut rester ouverte en arrière-plan avec une ancienne version)
   var pageUrl = location.href.split('#')[0].split('?')[0];
   var loadedSig = null, updateShown = false;
@@ -2870,10 +3115,19 @@ body.is-offline .offline-banner{ display:block; }
     setInterval(checkForUpdate, 5*60*1000);
   }
 
+  // Au retour sur l'appli, on recharge les données pour ne jamais travailler sur une version périmée.
+  var lastRefresh = Date.now();
+  function refreshDataIfIdle(){
+    if(view.screen !== 'app' || !navigator.onLine || isTyping() || Date.now() - lastRefresh < 30000) return;
+    lastRefresh = Date.now();
+    loadData().then(function(){ if(view.screen === 'app' && !isTyping()) render(); });
+  }
+  document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') refreshDataIfIdle(); });
+
   function init(){
     setOnlineState();
     render();
-    loadData().then(function(){ render(); });
+    loadData().then(function(){ render(); afterLogin(); });
   }
   init();
 })();
