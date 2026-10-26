@@ -1,5 +1,5 @@
 var CACHE_PREFIX = 'suivi-stagiaire-';
-var CACHE = CACHE_PREFIX + 'v4';
+var CACHE = CACHE_PREFIX + 'v6';
 var SHELL = ['./', 'index.html', 'config.js', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'logo.png'];
 var OTHER_APPS = self.registration.scope + 'organismes/';
 var CDN = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
