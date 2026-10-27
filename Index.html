@@ -747,12 +747,27 @@ body.is-offline .offline-banner{ display:block; }
       motDePasseDefini: row.mot_de_passe_defini
     };
   }
+  // Un stagiaire ne télécharge que sa fiche, un tuteur que celles de ses stagiaires
+  // (retrouvées par son adresse e-mail) ; référents et coordinateurs reçoivent tout.
+  function stagiairesQuery(comptes){
+    var q = sb.from('stagiaires').select(STAGIAIRE_COLS);
+    if(view.role==='stagiaire' && view.profileId) return q.eq('id', view.profileId);
+    if(view.role==='tuteur' && view.profileId){
+      var me = (comptes || []).filter(function(c){ return c.id===view.profileId; })[0];
+      var email = me && me.email ? me.email.trim() : '';
+      if(!email) return q.eq('id', '__aucun__');
+      return q.ilike('tuteur_email', email.replace(/[\\%_]/g, '\\$&'));
+    }
+    return q;
+  }
   function loadData(){
-    var stagQuery = sb.from('stagiaires').select(STAGIAIRE_COLS);
-    if(view.role==='stagiaire' && view.profileId) stagQuery = stagQuery.eq('id', view.profileId);
+    var compReq = Promise.resolve(sb.from('comptes').select('*'));
+    var stagReq = view.role==='tuteur'
+      ? compReq.then(function(r){ return r.error ? r : stagiairesQuery(r.data); })
+      : stagiairesQuery(null);
     return Promise.all([
-      stagQuery,
-      sb.from('comptes').select('*'),
+      stagReq,
+      compReq,
       sb.from('formations').select('*')
     ]).then(function(results){
       var stagRes = results[0], compRes = results[1], formRes = results[2];
