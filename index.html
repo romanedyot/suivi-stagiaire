@@ -777,6 +777,7 @@ body.is-offline .offline-banner{ display:block; }
         return;
       }
       DATA.stagiaires = stagRes.data.map(rowToStagiaire);
+      DATA.stagiaires.forEach(function(s){ if(pendingOps[s.id]) applyOps(s, pendingOps[s.id]); });
       DATA.comptes = compRes.data.map(rowToCompte);
       var formRows = (formRes && !formRes.error && formRes.data) ? formRes.data : [];
       DATA.hidden = formRows.filter(function(r){ return r.nom.indexOf(HIDDEN_PREFIX)===0; }).map(function(r){ return r.nom.slice(HIDDEN_PREFIX.length); });
@@ -1165,17 +1166,70 @@ body.is-offline .offline-banner{ display:block; }
     var slot = document.getElementById('undo-slot');
     if(slot) slot.innerHTML = undoButtonHtml();
   }
+  // « Annuler » / « Rétablir » ne réécrit que ce qui a changé, appliqué sur la version
+  // la plus récente : on n'efface plus ce que d'autres ont saisi entre-temps.
   function restoreStagiaireFields(id, before, fields){
     var cur = findStagiaire(id);
     if(!cur) return Promise.resolve({ error: { message: 'Ce stagiaire n’existe plus.' } });
     var restored = deepClone(cur);
-    var patch = {};
-    fields.forEach(function(k){ restored[k] = deepClone(before[k]); patch[k] = restored[k]; });
+    var ops = [];
+    fields.forEach(function(k){ diffPaths(cur[k], before[k], [k], ops); restored[k] = deepClone(before[k]); });
     var idx = DATA.stagiaires.findIndex(function(x){ return x.id===id; });
     if(idx>=0) DATA.stagiaires[idx] = restored;
     docEditBuffer = null; tasksEditBuffer = null; visiteEditBuffer = null;
     render();
-    return rpcUpdateStagiaire(id, patch);
+    var all = takePendingOps(id).concat(ops);
+    return all.length ? saveOps(id, all) : Promise.resolve({});
+  }
+
+  // Modifications qui n'ont pas pu être enregistrées (connexion coupée, serveur indisponible) :
+  // elles sont gardées et renvoyées automatiquement, au lieu d'écraser la fiche ou d'être perdues.
+  var pendingOps = {};
+  var pendingTimer = null;
+  function takePendingOps(id){ var p = pendingOps[id] || []; delete pendingOps[id]; return p; }
+  function flushPendingOps(){
+    pendingTimer = null;
+    Object.keys(pendingOps).forEach(function(id){
+      saveOps(id, takePendingOps(id)).then(function(r){
+        if(!r.error) showToast('Les modifications en attente ont bien été enregistrées.');
+      });
+    });
+  }
+  function schedulePendingFlush(){
+    if(!pendingTimer) pendingTimer = setTimeout(flushPendingOps, 8000);
+  }
+
+  // Applique des modifications précises sur la dernière version enregistrée de la fiche, puis l'enregistre.
+  // Si la fiche ne peut pas être relue, on n'enregistre RIEN plutôt que d'écrire une copie
+  // ancienne par-dessus tout : les modifications sont mises en attente et renvoyées plus tard.
+  function saveOps(id, ops){
+    return new Promise(function(resolve){
+      function queue(msg){
+        pendingOps[id] = ops.concat(pendingOps[id] || []);
+        schedulePendingFlush();
+        resolve({ error: { message: msg }, queued: true });
+      }
+      sb.from('stagiaires').select(STAGIAIRE_COLS).eq('id', id).maybeSingle().then(function(res){
+        if(res.error) return queue(res.error.message);
+        if(!res.data) return resolve({ error: { message: 'Ce stagiaire n’existe plus.' } });
+        var fresh = rowToStagiaire(res.data);
+        var merged = deepClone(fresh);
+        applyOps(merged, ops);
+        var patch = {};
+        STAGIAIRE_PATCH_FIELDS.forEach(function(k){ if(JSON.stringify(merged[k]) !== JSON.stringify(fresh[k])) patch[k] = merged[k]; });
+        if(!Object.keys(patch).length) return resolve({});
+        rpcUpdateStagiaire(id, patch).then(function(r){
+          if(r.error) return queue(r.error.message);
+          if(pendingOps[id]) applyOps(merged, pendingOps[id]);
+          var i2 = DATA.stagiaires.findIndex(function(x){ return x.id===id; });
+          if(i2>=0 && JSON.stringify(DATA.stagiaires[i2]) !== JSON.stringify(merged)){
+            DATA.stagiaires[i2] = merged;
+            if(!isTyping()) render();
+          }
+          resolve({});
+        }, function(){ queue('connexion indisponible'); });
+      }, function(){ queue('connexion indisponible'); });
+    });
   }
 
   // Différences précises entre deux versions d'une fiche (chemin → nouvelle valeur), pour ne modifier que ce qui a réellement changé.
@@ -1237,34 +1291,16 @@ body.is-offline .offline-banner{ display:block; }
       if(successMsg !== null){ showToast(successMsg || 'Enregistré.'); }
       if(onSaved) onSaved();
     }
-    if(!ops.length){ finish(); return; }
+    var allOps = takePendingOps(id).concat(ops);
+    if(!allOps.length){ finish(); return; }
 
     // On repart de la version la plus récente enregistrée, puis on y applique uniquement ce que l'on vient de modifier :
     // une page restée ouverte longtemps ne peut ainsi plus effacer les saisies faites entre-temps par quelqu'un d'autre.
-    sb.from('stagiaires').select(STAGIAIRE_COLS).eq('id', id).maybeSingle().then(function(res){
-      var merged, patch = {};
-      if(res.error || !res.data){
-        merged = clone;
-        STAGIAIRE_PATCH_FIELDS.forEach(function(k){ patch[k] = clone[k]; });
-      } else {
-        var fresh = rowToStagiaire(res.data);
-        merged = deepClone(fresh);
-        applyOps(merged, ops);
-        STAGIAIRE_PATCH_FIELDS.forEach(function(k){ if(JSON.stringify(merged[k]) !== JSON.stringify(fresh[k])) patch[k] = merged[k]; });
-      }
-      if(!Object.keys(patch).length){ finish(); return; }
-      return rpcUpdateStagiaire(id, patch).then(function(r){
-        if(r.error){ showToast('Enregistrement impossible : '+r.error.message); return; }
-        if(merged !== clone){
-          var i2 = DATA.stagiaires.findIndex(function(x){ return x.id===id; });
-          if(i2>=0 && JSON.stringify(DATA.stagiaires[i2]) !== JSON.stringify(merged)){
-            DATA.stagiaires[i2] = merged;
-            if(!isTyping()) render();
-          }
-        }
-        finish();
-      });
-    }).catch(function(){ showToast('Enregistrement impossible : connexion indisponible.'); });
+    saveOps(id, allOps).then(function(r){
+      if(r.queued){ showToast('Connexion instable : votre saisie est gardée et sera enregistrée automatiquement dans quelques secondes.'); return; }
+      if(r.error){ showToast('Enregistrement impossible : '+r.error.message); return; }
+      finish();
+    });
   }
 
   var toastTimer = null;
@@ -2877,6 +2913,20 @@ body.is-offline .offline-banner{ display:block; }
     if(btn) btn.click();
   });
 
+  // Les fiches de visite et la liste de documents ne sont enregistrées qu'au clic sur
+  // « Enregistrer » : on recopie chaque saisie en mémoire au fil de l'eau, pour qu'un
+  // rafraîchissement automatique de l'écran (retour sur l'appli, reconnexion…) ne
+  // fasse pas disparaître ce qui a été tapé.
+  function keepTypedText(){
+    if(visiteEditBuffer && document.getElementById('v-dateVisite')) syncVisiteBufferFromDom();
+    if(docEditBuffer) syncDocBufferFromDom();
+  }
+  document.addEventListener('input', keepTypedText);
+  document.addEventListener('change', keepTypedText);
+  window.addEventListener('beforeunload', function(e){
+    if(visiteEditBuffer || Object.keys(pendingOps).length){ e.preventDefault(); e.returnValue = ''; }
+  });
+
   document.addEventListener('click', onClick);
   document.addEventListener('keydown', function(e){
     if(e.key==='Enter'){
@@ -2905,6 +2955,7 @@ body.is-offline .offline-banner{ display:block; }
   window.addEventListener('online', function(){
     setOnlineState();
     showToast('Connexion rétablie.');
+    if(Object.keys(pendingOps).length){ clearTimeout(pendingTimer); flushPendingOps(); }
     loadData().then(function(){ if(!isTyping()) render(); });
   });
 
