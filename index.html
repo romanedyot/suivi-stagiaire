@@ -705,10 +705,11 @@ body.is-offline .offline-banner{ display:block; }
   }
   function ucLevelLabel(v){ for(var i=0;i<UC_LEVELS.length;i++){ if(UC_LEVELS[i][0]===v) return UC_LEVELS[i][1]; } return 'Non évalué'; }
   function fullName(st){ return st.prenom+' '+st.nom; }
+  function tuteursLabel(st){ return [st.tuteurNom, st.tuteur2Nom].filter(function(x){ return x && x.trim(); }).join(' et ') || '—'; }
   // ---------- Supabase : chargement des données ----------
   // Les photos pèsent l'essentiel des données : la liste est chargée sans elles,
   // et la photo d'un stagiaire n'est téléchargée qu'à l'ouverture de sa fiche.
-  var STAGIAIRE_COLS = 'id,prenom,nom,formation,telephone,email,structure_nom,structure_adresse,tuteur_nom,tuteur_telephone,tuteur_email,identifiant_stagiaire,mot_de_passe_defini_stagiaire,planning_structure,planning_dojo,documents,visites,suivis,evaluations,messages';
+  var STAGIAIRE_COLS = 'id,prenom,nom,formation,telephone,email,structure_nom,structure_adresse,tuteur_nom,tuteur_telephone,tuteur_email,tuteur2_nom,tuteur2_telephone,tuteur2_email,identifiant_stagiaire,mot_de_passe_defini_stagiaire,planning_structure,planning_dojo,documents,visites,suivis,evaluations,messages';
   var photoCache = {};
   var photoPending = {};
   function ensurePhoto(id){
@@ -733,6 +734,7 @@ body.is-offline .offline-banner{ display:block; }
       telephone: row.telephone, email: row.email,
       structureNom: row.structure_nom, structureAdresse: row.structure_adresse,
       tuteurNom: row.tuteur_nom, tuteurTelephone: row.tuteur_telephone, tuteurEmail: row.tuteur_email,
+      tuteur2Nom: row.tuteur2_nom || '', tuteur2Telephone: row.tuteur2_telephone || '', tuteur2Email: row.tuteur2_email || '',
       identifiantStagiaire: row.identifiant_stagiaire, motDePasseStagiaire: '',
       motDePasseDefiniStagiaire: row.mot_de_passe_defini_stagiaire,
       planningStructure: row.planning_structure || [], planningDojo: row.planning_dojo || [],
@@ -756,7 +758,8 @@ body.is-offline .offline-banner{ display:block; }
       var me = (comptes || []).filter(function(c){ return c.id===view.profileId; })[0];
       var email = me && me.email ? me.email.trim() : '';
       if(!email) return q.eq('id', '__aucun__');
-      return q.ilike('tuteur_email', email.replace(/[\\%_]/g, '\\$&'));
+      var pat = '"' + email.replace(/[\\%_]/g, '\\$&').replace(/"/g, '') + '"';
+      return q.or('tuteur_email.ilike.'+pat+',tuteur2_email.ilike.'+pat);
     }
     return q;
   }
@@ -771,6 +774,11 @@ body.is-offline .offline-banner{ display:block; }
       sb.from('formations').select('*')
     ]).then(function(results){
       var stagRes = results[0], compRes = results[1], formRes = results[2];
+      // Base pas encore mise à jour pour le deuxième tuteur : on recharge sans ces colonnes.
+      if(stagRes.error && /tuteur2_/.test(stagRes.error.message || '') && STAGIAIRE_COLS.indexOf('tuteur2_')>=0){
+        STAGIAIRE_COLS = STAGIAIRE_COLS.replace(',tuteur2_nom,tuteur2_telephone,tuteur2_email', '');
+        return loadData();
+      }
       if(stagRes.error || compRes.error){
         syncStatus = 'error';
         console.error('Chargement impossible', stagRes.error || compRes.error);
@@ -849,7 +857,9 @@ body.is-offline .offline-banner{ display:block; }
     var compte = findCompte(compteId);
     if(!compte || !compte.email) return [];
     var email = compte.email.toLowerCase();
-    return sortedStagiaires().filter(function(s){ return s.tuteurEmail && s.tuteurEmail.toLowerCase()===email; });
+    return sortedStagiaires().filter(function(s){
+      return (s.tuteurEmail && s.tuteurEmail.trim().toLowerCase()===email) || (s.tuteur2Email && s.tuteur2Email.trim().toLowerCase()===email);
+    });
   }
   // Crée ou met à jour automatiquement les comptes tuteurs à partir des adresses
   // e-mail renseignées sur les fiches stagiaires : un tuteur qui encadre plusieurs
@@ -898,7 +908,7 @@ body.is-offline .offline-banner{ display:block; }
     if(st.photo) blocks.push({type:'photo', src:st.photo});
     blocks.push({type:'meta', text:'Stagiaire : '+fullName(st)});
     blocks.push({type:'meta', text:'Formation : '+st.formation});
-    blocks.push({type:'meta', text:'Tuteur : '+(st.tuteurNom||'—')});
+    blocks.push({type:'meta', text:(st.tuteur2Nom ? 'Tuteurs : ' : 'Tuteur : ')+tuteursLabel(st)});
     blocks.push({type:'meta', text:'Structure d’accueil : '+st.structureNom});
     st.evaluations.forEach(function(d, idx){
       if(onlyIdx!=null && idx!==onlyIdx) return;
@@ -924,7 +934,7 @@ body.is-offline .offline-banner{ display:block; }
   function buildTuteurSheetBlocks(st, onlyIdx){
     var blocks = [];
     blocks.push({type:'meta', text:'Stagiaire : '+fullName(st)});
-    blocks.push({type:'meta', text:'Tuteur : '+(st.tuteurNom||'—')});
+    blocks.push({type:'meta', text:(st.tuteur2Nom ? 'Tuteurs : ' : 'Tuteur : ')+tuteursLabel(st)});
     blocks.push({type:'meta', text:'Structure d’accueil : '+st.structureNom});
     st.evaluations.forEach(function(d, idx){
       if(onlyIdx!=null && idx!==onlyIdx) return;
@@ -945,7 +955,7 @@ body.is-offline .offline-banner{ display:block; }
     if(st.photo) blocks.push({type:'photo', src:st.photo});
     blocks.push({type:'meta', text:'Stagiaire : '+fullName(st)});
     blocks.push({type:'meta', text:'Formation : '+st.formation});
-    blocks.push({type:'meta', text:'Tuteur : '+(st.tuteurNom||'—')});
+    blocks.push({type:'meta', text:(st.tuteur2Nom ? 'Tuteurs : ' : 'Tuteur : ')+tuteursLabel(st)});
     blocks.push({type:'meta', text:'Structure d’accueil : '+st.structureNom});
     blocks.push({type:'h2', text:'Planning en structure d’accueil'});
     blocks.push({type:'table', headers:['Jour','Horaires','Activité en structure'], colFractions:[0.2,0.25,0.55],
@@ -1013,7 +1023,7 @@ body.is-offline .offline-banner{ display:block; }
     return {
       id:newId(), prenom:'', nom:'', formation: formation || FORMATIONS[0],
       telephone:'', email:'', structureNom:'', structureAdresse:'',
-      tuteurNom:'', tuteurTelephone:'', tuteurEmail:'',
+      tuteurNom:'', tuteurTelephone:'', tuteurEmail:'', tuteur2Nom:'', tuteur2Telephone:'', tuteur2Email:'',
       identifiantStagiaire:'', motDePasseStagiaire:'', motDePasseDefiniStagiaire:true, photo:'',
       planningStructure: JOURS.map(function(j){ return {jour:j, horaires:'', activite:''}; }),
       planningDojo: JOURS.map(function(j){ return {jour:j, horaires:'', module:''}; }),
@@ -1093,7 +1103,7 @@ body.is-offline .offline-banner{ display:block; }
   }
 
   // ---------- persistence ----------
-  var STAGIAIRE_PATCH_FIELDS = ['prenom','nom','formation','telephone','email','structureNom','structureAdresse','tuteurNom','tuteurTelephone','tuteurEmail','identifiantStagiaire','planningStructure','planningDojo','documents','visites','suivis','evaluations','messages','photo'];
+  var STAGIAIRE_PATCH_FIELDS = ['prenom','nom','formation','telephone','email','structureNom','structureAdresse','tuteurNom','tuteurTelephone','tuteurEmail','tuteur2Nom','tuteur2Telephone','tuteur2Email','identifiantStagiaire','planningStructure','planningDojo','documents','visites','suivis','evaluations','messages','photo'];
 
   // ---------- annulation (bouton « ↩ Annuler » : revient sur la dernière modification) ----------
   var undoStack = [];
@@ -1315,13 +1325,29 @@ body.is-offline .offline-banner{ display:block; }
   }
 
   // ---------- render ----------
+  var isRendering = false;
   function render(){
     var root = document.getElementById('root');
     var html;
     if(view.screen==='login') html = renderLogin();
     else if(view.screen==='setup-password') html = renderSetupPassword();
     else html = renderApp();
-    root.innerHTML = html;
+    // On garde le champ en cours de saisie (curseur et texte) quand l'écran est redessiné.
+    var a = document.activeElement, keep = null;
+    if(a && a.id && (a.tagName==='INPUT' || a.tagName==='TEXTAREA' || a.tagName==='SELECT') && a.type!=='file' && a.type!=='checkbox'){
+      keep = { id: a.id, value: a.value, start: null, end: null };
+      try{ keep.start = a.selectionStart; keep.end = a.selectionEnd; }catch(e){}
+    }
+    isRendering = true;
+    try{ root.innerHTML = html; } finally { isRendering = false; }
+    if(keep){
+      var el = document.getElementById(keep.id);
+      if(el){
+        if(el.value !== keep.value) el.value = keep.value;
+        try{ el.focus({ preventScroll: true }); }catch(e){ el.focus(); }
+        try{ if(keep.start!==null) el.setSelectionRange(keep.start, keep.end); }catch(e){}
+      }
+    }
   }
 
   function renderLogin(){
@@ -1565,7 +1591,7 @@ body.is-offline .offline-banner{ display:block; }
       return '<tr class="row-click" data-action="open-stagiaire" data-id="'+esc(st.id)+'">' +
         '<td><strong>'+esc(fullName(st))+'</strong>'+(hasUnreadMessages(st) ? ' <span title="Message en attente de réponse">🔔</span>' : '')+'</td>' +
         '<td>'+esc(st.structureNom)+'</td>' +
-        '<td>'+esc(st.tuteurNom)+'</td>' +
+        '<td>'+esc(tuteursLabel(st))+'</td>' +
         '<td><span class="pill '+riskClass(risk)+'">'+riskLabel(risk)+'</span></td>' +
         '<td>'+sheetStatusHtml(st)+'</td>' +
         '<td>'+fmtDate(next)+'</td>' +
@@ -1575,7 +1601,7 @@ body.is-offline .offline-banner{ display:block; }
     var addForm = '';
     if(view.showAdd){
       addForm = '<div class="card add-form"><h3 style="margin-bottom:14px;">Nouveau stagiaire — '+esc(formation)+'</h3>' + infosFormFields({
-        prenom:'',nom:'',telephone:'',email:'',structureNom:'',structureAdresse:'',tuteurNom:'',tuteurTelephone:'',tuteurEmail:'',
+        prenom:'',nom:'',telephone:'',email:'',structureNom:'',structureAdresse:'',tuteurNom:'',tuteurTelephone:'',tuteurEmail:'',tuteur2Nom:'',tuteur2Telephone:'',tuteur2Email:'',
         identifiantStagiaire:'',motDePasseStagiaire:''
       }, 'add-', true) +
       '<div style="display:flex; gap:10px; margin-top:6px;"><button type="button" class="btn btn-primary" data-action="submit-add-stagiaire" data-formation="'+esc(formation)+'">Ajouter ce stagiaire</button><button type="button" class="btn" data-action="toggle-add-form">Annuler</button></div></div>';
@@ -1623,10 +1649,30 @@ body.is-offline .offline-banner{ display:block; }
       f('tuteurNom','Nom du tuteur',v.tuteurNom) + f('tuteurTelephone','Téléphone tuteur',v.tuteurTelephone) +
       f('tuteurEmail','E-mail tuteur',v.tuteurEmail,'email') +
     '</div>' +
+    (hasTuteur2(v, prefix)
+      ? tuteur2Block(prefix, v)
+      : '<button type="button" class="btn btn-sm" data-action="add-tuteur2" data-prefix="'+esc(prefix)+'" data-id="'+esc(v.id||'')+'" style="margin-top:4px;">+ Ajouter un deuxième tuteur</button>') +
     '<h4 style="font-size:0.9rem;margin:18px 0 10px;">Accès stagiaire</h4>' +
     accessSection +
     '<h4 style="font-size:0.9rem;margin:18px 0 10px;">Accès tuteur</h4>' +
-    tuteurAccessHint(v);
+    tuteurAccessHint(v) +
+    (hasTuteur2(v, prefix) && (v.tuteur2Email||'').trim() ? '<h4 style="font-size:0.9rem;margin:18px 0 10px;">Accès deuxième tuteur</h4>' + tuteurAccessHint({ tuteurEmail: v.tuteur2Email }) : '');
+  }
+  // Deuxième tuteur (facultatif) : il a accès à la fiche comme le premier, la feuille de suivi tuteur reste unique.
+  var tuteur2Ouvert = {};
+  function hasTuteur2(v, prefix){
+    return !!(tuteur2Ouvert[(prefix||'')+(v.id||'')] || (v.tuteur2Nom||'').trim() || (v.tuteur2Email||'').trim() || (v.tuteur2Telephone||'').trim());
+  }
+  function tuteur2Block(prefix, v){
+    function f(id,label,val,type){
+      return '<div class="field"><label for="'+prefix+id+'">'+label+'</label><input id="'+prefix+id+'" type="'+(type||'text')+'" value="'+esc(val||'')+'" /></div>';
+    }
+    return '<h4 style="font-size:0.9rem;margin:18px 0 10px;">Deuxième tuteur</h4>' +
+      '<p class="hint-banner" style="margin-bottom:10px;">Le deuxième tuteur a accès à la fiche de suivi, comme le premier. Il n’y a qu’une seule feuille de suivi tuteur, partagée entre les deux. Pour retirer ce tuteur, videz ses champs et enregistrez.</p>' +
+      '<div class="form-grid">' +
+        f('tuteur2Nom','Nom du deuxième tuteur',v.tuteur2Nom) + f('tuteur2Telephone','Téléphone deuxième tuteur',v.tuteur2Telephone) +
+        f('tuteur2Email','E-mail deuxième tuteur',v.tuteur2Email,'email') +
+      '</div>';
   }
 
   function tuteurAccessHint(v){
@@ -1708,16 +1754,17 @@ body.is-offline .offline-banner{ display:block; }
   var SELF_INFO_FIELDS = [
     ['prenom','Prénom'], ['nom','Nom'], ['telephone','Téléphone'], ['email','E-mail'],
     ['structureNom','Structure d’accueil'], ['structureAdresse','Adresse de la structure'],
-    ['tuteurNom','Nom du tuteur'], ['tuteurTelephone','Téléphone tuteur'], ['tuteurEmail','E-mail tuteur']
+    ['tuteurNom','Nom du tuteur'], ['tuteurTelephone','Téléphone tuteur'], ['tuteurEmail','E-mail tuteur'],
+    ['tuteur2Nom','Nom du deuxième tuteur (facultatif)'], ['tuteur2Telephone','Téléphone deuxième tuteur'], ['tuteur2Email','E-mail deuxième tuteur']
   ];
-  var STAGIAIRE_EDITABLE_FIELDS = ['prenom','nom','telephone','email','structureNom','structureAdresse','tuteurNom','tuteurTelephone','tuteurEmail'];
-  var TUTEUR_EDITABLE_FIELDS = ['tuteurNom','tuteurTelephone','tuteurEmail'];
+  var STAGIAIRE_EDITABLE_FIELDS = ['prenom','nom','telephone','email','structureNom','structureAdresse','tuteurNom','tuteurTelephone','tuteurEmail','tuteur2Nom','tuteur2Telephone','tuteur2Email'];
+  var TUTEUR_EDITABLE_FIELDS = ['tuteurNom','tuteurTelephone','tuteurEmail','tuteur2Nom','tuteur2Telephone','tuteur2Email'];
 
   function renderSelfInfosForm(st, editableFields, hintText){
     var editableHtml = SELF_INFO_FIELDS.filter(function(fd){ return editableFields.indexOf(fd[0])>=0; })
       .map(function(fd){
         var key=fd[0], label=fd[1];
-        var type = (key==='email'||key==='tuteurEmail') ? 'email' : 'text';
+        var type = (key==='email'||key==='tuteurEmail'||key==='tuteur2Email') ? 'email' : 'text';
         return '<div class="field"><label for="self-'+key+'">'+label+'</label><input id="self-'+key+'" type="'+type+'" value="'+esc(st[key])+'" /></div>';
       }).join('');
     var readonlyDefs = SELF_INFO_FIELDS.filter(function(fd){ return editableFields.indexOf(fd[0])<0; });
@@ -1755,6 +1802,7 @@ body.is-offline .offline-banner{ display:block; }
       roItem('Structure d’accueil', st.structureNom) + roItem('Adresse de la structure', st.structureAdresse) +
       roItem('Tuteur', st.tuteurNom) + roItem('Téléphone tuteur', st.tuteurTelephone) +
       roItem('E-mail tuteur', st.tuteurEmail) +
+      (hasTuteur2(st, 'ro-') ? roItem('Deuxième tuteur', st.tuteur2Nom) + roItem('Téléphone deuxième tuteur', st.tuteur2Telephone) + roItem('E-mail deuxième tuteur', st.tuteur2Email) : '') +
     '</div>' +
     '<p class="hint-banner" style="margin-top:18px;">Une information a changé ? Écrivez-le au référent depuis l’onglet Messagerie.</p>';
   }
@@ -2286,7 +2334,7 @@ body.is-offline .offline-banner{ display:block; }
     var blocks = [];
     blocks.push({type:'meta', text:'Stagiaire : '+fullName(st)});
     blocks.push({type:'meta', text:'Structure d’accueil : '+st.structureNom});
-    blocks.push({type:'meta', text:'Tuteur : '+(st.tuteurNom||'—')});
+    blocks.push({type:'meta', text:(st.tuteur2Nom ? 'Tuteurs : ' : 'Tuteur : ')+tuteursLabel(st)});
     blocks.push({type:'meta', text:'Date de la visite : '+(fmtDate(v.dateVisite)||'—')});
     blocks.push({type:'meta', text:'Référent / visiteur : '+(v.referent||'—')});
     if(v.type==='visite'){
@@ -2387,6 +2435,7 @@ body.is-offline .offline-banner{ display:block; }
   function readInfosFromForm(target, prefix){
     var fields = ['prenom','nom','telephone','email','structureNom','structureAdresse','tuteurNom','tuteurTelephone','tuteurEmail','identifiantStagiaire','motDePasseStagiaire'];
     fields.forEach(function(f){ target[f] = getVal(prefix+f); });
+    ['tuteur2Nom','tuteur2Telephone','tuteur2Email'].forEach(function(f){ if(document.getElementById(prefix+f)) target[f] = getVal(prefix+f); });
     if(!target.identifiantStagiaire){ target.identifiantStagiaire = pseudoFromName(target.prenom, target.nom); }
     if(target.motDePasseStagiaire){ target.motDePasseDefiniStagiaire = true; }
     // L’accès tuteur n’est plus saisi ici : il est géré automatiquement par
@@ -2833,6 +2882,15 @@ body.is-offline .offline-banner{ display:block; }
       }
       return;
     }
+    if(action==='add-tuteur2'){
+      // On affiche les champs sans redessiner l'écran, pour ne rien perdre de ce qui est en cours de saisie.
+      var t2prefix = el.getAttribute('data-prefix') || '';
+      tuteur2Ouvert[t2prefix + (el.getAttribute('data-id') || '')] = true;
+      el.outerHTML = tuteur2Block(t2prefix, {});
+      var t2 = document.getElementById(t2prefix+'tuteur2Nom');
+      if(t2) t2.focus();
+      return;
+    }
     if(action==='save-self-infos'){
       var selfEditableKeys = view.role==='stagiaire' ? STAGIAIRE_EDITABLE_FIELDS : (view.role==='tuteur' ? TUTEUR_EDITABLE_FIELDS : []);
       if(!selfEditableKeys.length) return;
@@ -2902,6 +2960,7 @@ body.is-offline .offline-banner{ display:block; }
     return null;
   }
   document.addEventListener('focusout', function(e){
+    if(isRendering) return; // le champ disparaît parce que l'écran est redessiné : ce n'est pas l'utilisateur qui le quitte
     var t = e.target;
     if(!t || (t.tagName!=='INPUT' && t.tagName!=='TEXTAREA' && t.tagName!=='SELECT')) return;
     if(t.type==='password') return;
@@ -2909,8 +2968,11 @@ body.is-offline .offline-banner{ display:block; }
     if(rt && rt.getAttribute && (rt.getAttribute('data-action')==='undo-last' || rt.getAttribute('data-action')==='redo-last')) return;
     var action = autosaveActionForField(t.id || '');
     if(!action) return;
-    var btn = document.querySelector('[data-action="'+action+'"]');
-    if(btn) btn.click();
+    // On attend que le curseur soit arrivé dans le champ suivant avant d'enregistrer et de redessiner l'écran.
+    setTimeout(function(){
+      var btn = document.querySelector('[data-action="'+action+'"]');
+      if(btn) btn.click();
+    }, 0);
   });
 
   // Les fiches de visite et la liste de documents ne sont enregistrées qu'au clic sur
