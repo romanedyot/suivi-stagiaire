@@ -819,11 +819,25 @@ body.is-offline .offline-banner{ display:block; }
     for(var i=st.suivis.length-1;i>=0;i--){ if(st.suivis[i].dateVisite || st.suivis[i].risque) return st.suivis[i]; }
     return null;
   }
-  // "En attente de réponse" : le dernier message du fil n'a pas été envoyé par le référent/coordinateur.
+  // "En attente" : le dernier message du fil n'a pas été envoyé par le référent/coordinateur
+  // et personne de l'équipe n'a encore ouvert la messagerie depuis (pas besoin de répondre à tout).
   function hasUnreadMessages(st){
     if(!st.messages || !st.messages.length) return false;
     var last = st.messages[st.messages.length-1];
-    return last.role!=='referent' && last.role!=='coordinateur';
+    return last.role!=='referent' && last.role!=='coordinateur' && !last.luParEquipe;
+  }
+  // Ouvrir la messagerie d'un stagiaire (référent / coordinateur) retire la cloche, pour toute l'équipe.
+  var marquageLuEnCours = {};
+  function marquerMessagesLus(st){
+    if(!isFullAccess() || !hasUnreadMessages(st) || marquageLuEnCours[st.id]) return;
+    marquageLuEnCours[st.id] = true;
+    setTimeout(function(){
+      updateStagiaire(st.id, function(s){
+        var last = s.messages[s.messages.length-1];
+        if(last) last.luParEquipe = true;
+      }, null, function(){ delete marquageLuEnCours[st.id]; }, { noUndo: true });
+      setTimeout(function(){ delete marquageLuEnCours[st.id]; }, 15000);
+    }, 0);
   }
   function stagiairesWithUnread(){
     return sortedStagiaires().filter(hasUnreadMessages);
@@ -945,7 +959,7 @@ body.is-offline .offline-banner{ display:block; }
       blocks.push({type:'table', headers:['Critère','Note (0 à 4)'], colFractions:[0.78,0.22],
         levelClasses: CRIT1.map(function(c){ return critClass(d.criteresTuteur && d.criteresTuteur[c[0]]); }),
         rows: CRIT1.map(function(c){ return [c[1], (d.criteresTuteur && d.criteresTuteur[c[0]]) || '—']; })});
-      blocks.push({type:'p', label:'Difficultés rencontrées par le tuteur :', text: d.tuteurDifficultes});
+      blocks.push({type:'p', label:'Difficultés rencontrées par le stagiaire :', text: d.tuteurDifficultes});
       blocks.push({type:'p', label:'Autres remarques :', text: d.tuteurRemarques});
     });
     return blocks;
@@ -1279,7 +1293,7 @@ body.is-offline .offline-banner{ display:block; }
     });
   }
 
-  function updateStagiaire(id, mutator, successMsg, onSaved){
+  function updateStagiaire(id, mutator, successMsg, onSaved, opts){
     var st = findStagiaire(id);
     if(!st) return;
     var clone = deepClone(st);
@@ -1293,7 +1307,7 @@ body.is-offline .offline-banner{ display:block; }
     render();
 
     function finish(){
-      if(changed.length){
+      if(changed.length && !(opts && opts.noUndo)){
         pushUndo('Modification de '+fullName(clone),
           function(){ return restoreStagiaireFields(id, st, changed); },
           function(){ return restoreStagiaireFields(id, clone, changed); });
@@ -1331,6 +1345,7 @@ body.is-offline .offline-banner{ display:block; }
     var html;
     if(view.screen==='login') html = renderLogin();
     else if(view.screen==='setup-password') html = renderSetupPassword();
+    else if(view.screen==='forgot') html = renderForgot();
     else html = renderApp();
     // On garde le champ en cours de saisie (curseur et texte) quand l'écran est redessiné.
     var a = document.activeElement, keep = null;
@@ -1362,6 +1377,7 @@ body.is-offline .offline-banner{ display:block; }
         '<div class="field"><label for="login-motdepasse">Mot de passe</label><input id="login-motdepasse" type="password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" />' +
           '<label class="show-pass"><input type="checkbox" data-action="toggle-pass" data-target="login-motdepasse" /> Afficher le mot de passe</label></div>' +
         '<button type="button" class="btn btn-primary" data-action="submit-login" style="width:100%;">Se connecter</button>' +
+        '<p style="text-align:center;margin:14px 0 0;"><a href="#" data-action="forgot-open">Mot de passe oublié ?</a></p>' +
       '</div>' +
       '<p class="hint-banner" style="margin-top:20px;">Vous ne connaissez pas vos identifiants, ou vous avez oublié votre mot de passe ? ' +
         (ORG.contactEmail || ORG.contactTel
@@ -1372,6 +1388,39 @@ body.is-offline .offline-banner{ display:block; }
       '</p>' +
       (isStandalone ? '' : '<button type="button" class="btn install-cta" data-action="open-install"><span aria-hidden="true">📲</span> Installer l’application sur mon téléphone</button>') +
     '</div>';
+  }
+
+  // ---------- mot de passe oublié : code envoyé par e-mail ----------
+  function renderForgot(){
+    var f = view.forgot || { step: 1, email: '' };
+    var pwdField = function(id, label){ return '<div class="field"><label for="'+id+'">'+label+'</label><input id="'+id+'" type="password" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" /></div>'; };
+    var body = f.step === 1
+      ? '<h3>Mot de passe oublié</h3>' +
+        '<p class="hint-banner">Saisissez l’adresse e-mail avec laquelle vous vous connectez : vous allez recevoir un code pour choisir un nouveau mot de passe.</p>' +
+        '<div class="field"><label for="forgot-email">Adresse e-mail</label><input id="forgot-email" type="email" autocomplete="username" value="'+esc(f.email)+'" /></div>' +
+        '<button type="button" class="btn btn-primary" data-action="forgot-send" style="width:100%;">Recevoir un code par e-mail</button>'
+      : '<h3>Nouveau mot de passe</h3>' +
+        '<p class="hint-banner">Si un compte existe pour <strong>'+esc(f.email)+'</strong>, un code à 6 chiffres vient de vous être envoyé par e-mail (pensez à regarder dans les courriers indésirables). Il est valable 15 minutes.</p>' +
+        '<div class="field"><label for="forgot-code">Code reçu par e-mail</label><input id="forgot-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" /></div>' +
+        pwdField('forgot-pass', 'Nouveau mot de passe') + pwdField('forgot-pass2', 'Confirmer le mot de passe') +
+        '<label class="show-pass"><input type="checkbox" data-action="toggle-pass" data-target="forgot-pass,forgot-pass2" /> Afficher le mot de passe</label>' +
+        '<button type="button" class="btn btn-primary" data-action="forgot-confirm" style="width:100%;margin-top:10px;">Enregistrer mon nouveau mot de passe</button>' +
+        '<p style="text-align:center;margin:12px 0 0;"><a href="#" data-action="forgot-send" data-resend="1">Je n’ai rien reçu : renvoyer un code</a></p>';
+    return '' +
+    '<div class="login-wrap">' +
+      '<img src="'+esc(ORG.logo)+'?v=2" alt="'+esc(ORG.nom)+'" class="login-logo" onerror="this.style.display=\'none\'" />' +
+      '<h1 class="login-title">'+esc(ORG.titre)+'</h1>' +
+      '<div class="login-card">' + body +
+        '<p style="text-align:center;margin:14px 0 0;"><a href="#" data-action="forgot-back">← Retour à la connexion</a></p>' +
+      '</div>' +
+    '</div>';
+  }
+  function sendResetCode(email){
+    return fetch(SUPABASE_URL + '/functions/v1/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+      body: JSON.stringify({ email: email })
+    }).then(function(r){ return r.ok; }).catch(function(){ return false; });
   }
 
   function renderSetupPassword(){
@@ -1686,6 +1735,7 @@ body.is-offline .offline-banner{ display:block; }
         ? ', avec le mot de passe provisoire <strong>Provisoire2026!</strong> qu’il n’a pas encore changé.'
         : ', avec le même mot de passe que ses autres stagiaires suivis ici (pour des raisons de sécurité, ce mot de passe n’est plus affiché ici une fois défini par le tuteur — utilisez « Mot de passe oublié » sur l’écran de connexion si besoin).';
       return '<p class="hint-banner">Ce tuteur a déjà un accès (identifiant : <strong>'+esc(compte.email)+'</strong>). Ce stagiaire apparaîtra automatiquement dans son espace, sous un nouvel onglet à son nom'+pwdNote+' Pour retirer son accès à ce stagiaire, videz ce champ e-mail et enregistrez ; si c’était son dernier stagiaire suivi, son compte sera automatiquement supprimé.</p>' +
+        (compte.motDePasseDefini===false ? '' : '<button type="button" class="btn btn-sm" data-action="reset-compte-pwd" data-compte="'+esc(compte.id)+'" data-nom="'+esc(compte.nomAffiche||compte.email)+'" style="margin:-4px 0 10px;">Réinitialiser son mot de passe (Provisoire2026!)</button>') +
         (compte.motDePasseDefini===false ? mailtoInviteHtml(compte.email, compte.nomAffiche, compte.email, 'Provisoire2026!', 'tuteur') : '');
     }
     return '<p class="hint-banner">Nouvel accès tuteur : à l’enregistrement, un compte sera créé pour <strong>'+esc(email)+'</strong>, avec le mot de passe provisoire <strong>Provisoire2026!</strong> ; le tuteur se connectera avec cette adresse e-mail et choisira un nouveau mot de passe à sa première connexion.</p>';
@@ -1693,6 +1743,7 @@ body.is-offline .offline-banner{ display:block; }
 
   function renderFiche(st){
     var editable = isFullAccess();
+    if(view.tab==='messages') marquerMessagesLus(st);
     var lp = lastFilledPeriod(st);
     var risk = lp ? lp.risque : '';
     var backBtn = editable ? '<button type="button" class="btn btn-ghost" data-action="back-to-list">← Retour à la liste</button>' : '';
@@ -1900,7 +1951,7 @@ body.is-offline .offline-banner{ display:block; }
     html += textBlock(idx,'tuteurCompetencesAcquises', d.tuteurCompetencesAcquises, 'Les compétences acquises', editable);
     html += '<h4 class="suivi-subtitle">Critères</h4>';
     html += critGrid(CRIT1, d.criteresTuteur || {}, 'ct', idx, editable);
-    html += textBlock(idx,'tuteurDifficultes', d.tuteurDifficultes, "Les difficultés rencontrées par le tuteur", editable);
+    html += textBlock(idx,'tuteurDifficultes', d.tuteurDifficultes, "Les difficultés rencontrées par le stagiaire", editable);
     html += textBlock(idx,'tuteurRemarques', d.tuteurRemarques, 'Autres remarques', editable);
     if(editable){
       html += '<button type="button" class="btn btn-primary" data-action="save-detail-tuteur" data-id="'+esc(st.id)+'" data-idx="'+idx+'" style="margin-top:10px;">Enregistrer cette période</button>';
@@ -2455,8 +2506,65 @@ body.is-offline .offline-banner{ display:block; }
     if(!el) return;
     var action = el.getAttribute('data-action');
     var id = el.getAttribute('data-id');
+    if(el.tagName==='A' && el.getAttribute('href')==='#') e.preventDefault();
 
     if(action==='submit-login'){ doLogin(); return; }
+    if(action==='forgot-open'){
+      view.screen = 'forgot'; view.forgot = { step: 1, email: (getVal('login-identifiant')||'').indexOf('@')>0 ? getVal('login-identifiant').trim() : '' };
+      saveView(); render(); return;
+    }
+    if(action==='forgot-back'){
+      var backEmail = view.forgot && view.forgot.email;
+      view = { screen:'login', role:null, profileId:null, selectedFormation:null, selectedId:null, tab:'infos', showAdd:false, detailPeriod:0 };
+      saveView(); render();
+      var li = document.getElementById('login-identifiant'); if(li && backEmail) li.value = backEmail;
+      return;
+    }
+    if(action==='forgot-send'){
+      var fEmail = el.getAttribute('data-resend') ? (view.forgot && view.forgot.email) : getVal('forgot-email').trim();
+      if(!fEmail || fEmail.indexOf('@')<1){ showToast('Merci de saisir votre adresse e-mail.'); return; }
+      el.disabled = true;
+      sendResetCode(fEmail).then(function(ok){
+        if(!ok){ el.disabled = false; showToast('Envoi impossible pour le moment. Réessayez dans quelques minutes, ou contactez votre référent.'); return; }
+        view.forgot = { step: 2, email: fEmail }; saveView(); render();
+        showToast('Code envoyé : regardez vos e-mails.');
+      });
+      return;
+    }
+    if(action==='forgot-confirm'){
+      var fCode = getVal('forgot-code').replace(/\s+/g,'');
+      var fp1 = getVal('forgot-pass').trim(), fp2 = getVal('forgot-pass2').trim();
+      if(!/^\d{6}$/.test(fCode)){ showToast('Le code reçu par e-mail contient 6 chiffres.'); return; }
+      if(fp1.length<4){ showToast('Le mot de passe doit contenir au moins 4 caractères.'); return; }
+      if(fp1!==fp2){ showToast('Les deux mots de passe ne correspondent pas.'); return; }
+      var fMail = view.forgot.email;
+      sb.rpc('rpc_reset_password_with_code', { p_email: fMail, p_code: fCode, p_new_password: fp1 }).then(function(res){
+        var st = res.error ? 'error' : res.data;
+        if(st==='ok'){
+          view = { screen:'login', role:null, profileId:null, selectedFormation:null, selectedId:null, tab:'infos', showAdd:false, detailPeriod:0 };
+          saveView(); render();
+          var li2 = document.getElementById('login-identifiant'); if(li2) li2.value = fMail;
+          showToast('Mot de passe modifié : vous pouvez vous connecter.');
+        }
+        else if(st==='expired') showToast('Ce code a expiré : demandez-en un nouveau.');
+        else if(st==='too_many') showToast('Trop d’essais : demandez un nouveau code.');
+        else if(st==='weak') showToast('Le mot de passe doit contenir au moins 4 caractères.');
+        else if(st==='invalid') showToast('Code incorrect. Vérifiez le dernier code reçu par e-mail.');
+        else showToast('Enregistrement impossible pour le moment. Réessayez dans quelques minutes.');
+      });
+      return;
+    }
+    if(action==='reset-compte-pwd'){
+      var rcId = el.getAttribute('data-compte'), rcNom = el.getAttribute('data-nom') || 'ce tuteur';
+      if(!window.confirm('Réinitialiser le mot de passe de '+rcNom+' ?\n\nIl pourra se connecter avec le mot de passe provisoire Provisoire2026! et devra en choisir un nouveau à la connexion.')) return;
+      sb.rpc('rpc_admin_reset_password', { p_kind: 'compte', p_id: rcId }).then(function(res){
+        if(res.error || res.data!==true){ showToast('Réinitialisation impossible : '+(res.error ? res.error.message : 'compte introuvable.')); return; }
+        var rc = findCompte(rcId); if(rc) rc.motDePasseDefini = false;
+        render();
+        showToast('Mot de passe réinitialisé : '+rcNom+' se connecte avec Provisoire2026! et en choisira un nouveau.');
+      });
+      return;
+    }
     if(action==='enable-notifications'){ enableNotifications().then(function(){ render(); }); return; }
     if(action==='disable-notifications'){ disableNotifications().then(function(){ render(); showToast('Notifications désactivées.'); }); return; }
     if(action==='notif-banner-enable'){ hideNotifBanner(); enableNotifications().then(function(){ render(); }); return; }
