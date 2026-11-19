@@ -666,7 +666,6 @@ body.is-offline .offline-banner{ display:block; }
     // Période 1 : anciennes UC (déjà remplies). Périodes 2 et 3 : blocs de compétences.
     if(BPJEPS_BC_FORMATIONS.indexOf(formation)!==-1 && periodIdx>=1) return UC_BLOCKS_BPJEPS_BC;
     if(formation==='BPJEPS_BC') return UC_BLOCKS_BPJEPS_BC; // nouvelle formation BPJEPS : blocs pour toutes les périodes
-    if(formationOrganisme(formation)==='AURA') return UC_BLOCKS_BPJEPS_BC; // AURA : blocs de compétences pour toutes les périodes
     if(formation==='BPJEPS AF IJ' || formation==='BPJEPS AF INSEP') return UC_BLOCKS_BPJEPS_AF;
     if(formation==='DEJEPS IJ' || formation==='DEJEPS INSEP') return UC_BLOCKS_DEJEPS;
     if(formation==='DESJEPS PERF IJ' || formation==='DESJEPS PERF INSEP') return UC_BLOCKS_DESJEPS_PERF;
@@ -675,6 +674,7 @@ body.is-offline .offline-banner{ display:block; }
       var fm = DATA.formations[i];
       if(fm.nom===formation && fm.modele && fm.modele!==formation) return ucBlocksForFormation(fm.modele, periodIdx);
     }
+    if(formationOrganisme(formation)==='AURA') return UC_BLOCKS_BPJEPS_BC; // BPJEPS AURA : blocs de compétences pour toutes les périodes
     return UC_BLOCKS_DEFAULT;
   }
   var CRIT_LEVELS = [['','Non noté'],['0','0'],['1','1'],['2','2'],['3','3'],['4','4']];
@@ -686,6 +686,8 @@ body.is-offline .offline-banner{ display:block; }
   var HIDDEN_PREFIX = '__masquee__';
   DATA.hidden = [];
   var ORGANISMES = ['Dojo Academy','AURA'];
+  // Formations proposées pour l'AURA : [type affiché, référentiel utilisé]. Nom créé : « <type> AURA ».
+  var AURA_FORMATIONS = [['BPJEPS','BPJEPS_BC'],['BPJEPS AF','BPJEPS AF IJ'],['DEJEPS','DEJEPS IJ'],['DESJEPS PERF','DESJEPS PERF IJ'],['DESJEPS ASEC','DESJEPS ASEC DSP']];
   function formationOrganisme(nom){
     for(var i=0;i<DATA.formations.length;i++){ if(DATA.formations[i].nom===nom) return DATA.formations[i].organisme || ORGANISMES[0]; }
     return ORGANISMES[0];
@@ -1627,7 +1629,10 @@ body.is-offline .offline-banner{ display:block; }
     if(view.showAddFormation){
       addFormationHtml = '<div class="card add-form" style="margin-bottom:16px;"><h3 style="margin-bottom:14px;">Nouvelle formation</h3>' +
         '<div class="form-grid">' +
-          '<div class="field"><label for="newformation-nom">Nom de la formation</label><input id="newformation-nom" placeholder="ex. BPJEPS AF Paris" /></div>' +
+          '<div class="field" id="newformation-nom-field"><label for="newformation-nom">Nom de la formation</label><input id="newformation-nom" placeholder="ex. BPJEPS AF Paris" /></div>' +
+          '<div class="field" id="newformation-aura-field" style="display:none;"><label for="newformation-aura">Formation</label><select id="newformation-aura">' +
+            AURA_FORMATIONS.map(function(a){ return '<option value="'+esc(a[0])+'">'+esc(a[0])+' AURA</option>'; }).join('') +
+          '</select></div>' +
           '<div class="field"><label for="newformation-organisme">Organisme de formation</label><select id="newformation-organisme">' +
             ORGANISMES.map(function(o){ return '<option value="'+esc(o)+'">'+esc(o)+'</option>'; }).join('') +
           '</select></div>' +
@@ -2741,7 +2746,10 @@ body.is-offline .offline-banner{ display:block; }
       var fNom = getVal('newformation-nom').replace(/\s+/g,' ').trim();
       var fModele = getVal('newformation-modele');
       var fOrg = getVal('newformation-organisme') || ORGANISMES[0];
-      if(fOrg==='AURA') fModele = 'BPJEPS_BC';
+      if(fOrg==='AURA'){
+        var auraType = getVal('newformation-aura');
+        AURA_FORMATIONS.forEach(function(a){ if(a[0]===auraType){ fNom = a[0]+' AURA'; fModele = a[1]; } });
+      }
       if(!fNom){ showToast('Merci de renseigner le nom de la formation.'); return; }
       var dup = allFormations().some(function(f){ return f.toLowerCase()===fNom.toLowerCase(); });
       if(dup){ showToast('Cette formation existe déjà.'); return; }
@@ -3097,8 +3105,9 @@ body.is-offline .offline-banner{ display:block; }
   document.addEventListener('change', function(e){
     var sel = e.target;
     if(sel && sel.id==='newformation-organisme'){
-      var mf = document.getElementById('newformation-modele-field');
-      if(mf) mf.style.display = sel.value==='AURA' ? 'none' : '';
+      var isAura = sel.value==='AURA';
+      ['newformation-modele-field','newformation-nom-field'].forEach(function(id){ var f = document.getElementById(id); if(f) f.style.display = isAura ? 'none' : ''; });
+      var af = document.getElementById('newformation-aura-field'); if(af) af.style.display = isAura ? '' : 'none';
     }
     if(sel && sel.classList && sel.classList.contains('uc-level')){
       sel.className = 'uc-level ' + lvlClass(sel.value);
