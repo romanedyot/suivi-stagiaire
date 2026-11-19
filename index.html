@@ -138,6 +138,27 @@ label{ display:block; font-size:0.78rem; color:var(--text-muted); margin-bottom:
 .btn-sm{ padding:5px 10px; font-size:0.78rem; }
 .btn-ghost[data-action="back-to-list"], .btn-ghost[data-action="back-to-formations"]{ background:var(--surface); border:1.5px solid var(--border); color:var(--accent); padding:8px 14px; margin-bottom:6px; }
 .btn-ghost[data-action="back-to-list"]:hover, .btn-ghost[data-action="back-to-formations"]:hover{ border-color:var(--accent); }
+:root.org-aura{
+  --bg:#D3EDE1;
+  --bg-deco:radial-gradient(circle at 8% 10%,rgba(14,159,110,.30),transparent 40%),radial-gradient(circle at 94% 12%,rgba(30,30,30,.10),transparent 36%),radial-gradient(circle at 88% 96%,rgba(14,159,110,.26),transparent 40%),radial-gradient(circle at 4% 92%,rgba(11,90,64,.20),transparent 38%);
+  --surface-alt:#E9EEEC; --field-bg:#EDF4F1; --border:#9DB5AA;
+  --accent:#0E8C61; --accent-soft:#D1EFE1; --accent-grad:linear-gradient(90deg,#0E8C61,#2BB673);
+  --topbar-bg:linear-gradient(90deg,#0A4D37 0%,#0E8C61 60%,#2BB673 100%);
+}
+@media (prefers-color-scheme: dark){
+  :root.org-aura:not([data-theme="light"]){
+    --bg:#0E2A20; --surface-alt:#16392C; --field-bg:#0F2B21; --border:#3E8A6B;
+    --accent:#5FD3A2; --accent-contrast:#08261B; --accent-soft:#1D4A39; --accent-grad:linear-gradient(90deg,#5FD3A2,#8BE3BE);
+    --topbar-bg:linear-gradient(90deg,#08392A 0%,#0B6E4C 60%,#1E8F5C 100%);
+    --bg-deco:radial-gradient(circle at 8% 10%,rgba(14,159,110,.24),transparent 40%),radial-gradient(circle at 88% 96%,rgba(14,159,110,.18),transparent 40%);
+  }
+}
+:root.org-aura[data-theme="dark"]{
+  --bg:#0E2A20; --surface-alt:#16392C; --field-bg:#0F2B21; --border:#3E8A6B;
+  --accent:#5FD3A2; --accent-contrast:#08261B; --accent-soft:#1D4A39; --accent-grad:linear-gradient(90deg,#5FD3A2,#8BE3BE);
+  --topbar-bg:linear-gradient(90deg,#08392A 0%,#0B6E4C 60%,#1E8F5C 100%);
+  --bg-deco:radial-gradient(circle at 8% 10%,rgba(14,159,110,.24),transparent 40%),radial-gradient(circle at 88% 96%,rgba(14,159,110,.18),transparent 40%);
+}
 .topbar{
   position:sticky; top:0; z-index:10; display:flex; align-items:center; justify-content:space-between;
   gap:12px; padding:14px 24px; background:var(--topbar-bg); color:var(--topbar-text); border-bottom:1px solid var(--border); flex-wrap:wrap;
@@ -705,6 +726,12 @@ body.is-offline .offline-banner{ display:block; }
     if(view.role==='tuteur'){
       var tl = tuteurStagiaires(view.profileId);
       if(tl.length && tl.every(function(s){ return formationOrganisme(s.formation)==='AURA'; })) return 'AURA';
+    }
+    if(isFullAccess()){
+      // Référent / coordinateur : couleurs et logo de l'organisme de la formation (ou du stagiaire) ouverte.
+      var sel = view.selectedId ? findStagiaire(view.selectedId) : null;
+      if(sel) return formationOrganisme(sel.formation);
+      if(view.selectedFormation) return formationOrganisme(view.selectedFormation);
     }
     return ORGANISMES[0];
   }
@@ -1416,6 +1443,7 @@ body.is-offline .offline-banner{ display:block; }
   var isRendering = false;
   function render(){
     var root = document.getElementById('root');
+    document.documentElement.classList.toggle('org-aura', view.screen==='app' && viewerOrganisme()==='AURA');
     var html;
     if(view.screen==='login') html = renderLogin();
     else if(view.screen==='setup-password') html = renderSetupPassword();
