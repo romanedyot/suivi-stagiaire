@@ -153,6 +153,8 @@ label{ display:block; font-size:0.78rem; color:var(--text-muted); margin-bottom:
   font-weight:700; font-size:0.92rem; letter-spacing:0.02em; flex-shrink:0;
 }
 .brand h1{ font-size:1.15rem; }
+.brand .mark.mark-logo{ width:46px; height:46px; padding:2px; border-radius:10px; overflow:hidden; }
+.brand .mark.mark-logo img{ width:100%; height:100%; object-fit:contain; display:block; }
 .brand .sub{ font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em; }
 .topbar-right{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
 .actor{ text-align:right; font-size:0.82rem; }
@@ -233,6 +235,14 @@ tr:last-child td{ border-bottom:none; }
 .formation-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
 @media (max-width:760px){ .formation-grid{ grid-template-columns:1fr 1fr; } }
 .formation-card{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; box-shadow:var(--shadow); cursor:pointer; }
+.formation-card.org-dojo{ border-left:5px solid #2F5BD6; }
+.formation-card.org-aura{ border-left:5px solid #0E9F6E; }
+.org-head{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:1.02rem; margin:18px 0 10px; }
+.org-head .org-dot{ width:11px; height:11px; border-radius:50%; align-self:center; }
+.org-head.org-dojo .org-dot{ background:#2F5BD6; }
+.org-head.org-aura .org-dot{ background:#0E9F6E; }
+.org-head.org-aura{ color:#0B7A55; }
+.org-head .org-sub{ font-family:inherit; font-weight:400; font-size:0.8rem; color:var(--text-muted); font-family:'Inter',system-ui,sans-serif; }
 .formation-card:hover{ border-color:var(--orange); }
 .formation-card h3{ font-size:1rem; margin-bottom:6px; }
 .formation-card-meta{ font-size:0.82rem; color:var(--text-muted); }
@@ -688,6 +698,19 @@ body.is-offline .offline-banner{ display:block; }
   var ORGANISMES = ['Dojo Academy','AURA'];
   // Formations proposées pour l'AURA : [type affiché, référentiel utilisé]. Nom créé : « <type> AURA ».
   var AURA_FORMATIONS = [['BPJEPS','BPJEPS_BC'],['BPJEPS AF','BPJEPS AF IJ'],['DEJEPS','DEJEPS IJ'],['DESJEPS PERF','DESJEPS PERF IJ'],['DESJEPS ASEC','DESJEPS ASEC DSP']];
+  var ORG_AURA = { nom:'Ligue Auvergne-Rhône-Alpes Judo-Jujitsu', court:'Ligue AURA', logo:'logo-aura.png' };
+  // Organisme de la personne connectée : AURA pour un stagiaire d'une formation AURA, ou un tuteur dont tous les stagiaires sont AURA.
+  function viewerOrganisme(){
+    if(view.role==='stagiaire'){ var st = findStagiaire(view.profileId); return st ? formationOrganisme(st.formation) : ORGANISMES[0]; }
+    if(view.role==='tuteur'){
+      var tl = tuteurStagiaires(view.profileId);
+      if(tl.length && tl.every(function(s){ return formationOrganisme(s.formation)==='AURA'; })) return 'AURA';
+    }
+    return ORGANISMES[0];
+  }
+  function isAuraStagiaire(st){ return !!st && formationOrganisme(st.formation)==='AURA'; }
+  function lieuFormation(st){ return isAuraStagiaire(st) ? 'la '+ORG_AURA.court : ORG.nom; }   // « Planning à … »
+  function nomCourtFormation(st){ return isAuraStagiaire(st) ? ORG_AURA.court : ORG.nom; }
   function formationOrganisme(nom){
     for(var i=0;i<DATA.formations.length;i++){ if(DATA.formations[i].nom===nom) return DATA.formations[i].organisme || ORGANISMES[0]; }
     return ORGANISMES[0];
@@ -1025,8 +1048,8 @@ body.is-offline .offline-banner{ display:block; }
     blocks.push({type:'h2', text:'Planning en structure d’accueil'});
     blocks.push({type:'table', headers:['Jour','Horaires','Activité en structure'], colFractions:[0.2,0.25,0.55],
       rows: st.planningStructure.map(function(r){ return [r.jour, r.horaires||'—', r.activite||'—']; })});
-    blocks.push({type:'h2', text:'Planning à '+ORG.nom});
-    blocks.push({type:'table', headers:['Jour','Horaires','Module à '+ORG.nom], colFractions:[0.2,0.25,0.55],
+    blocks.push({type:'h2', text:'Planning à '+lieuFormation(st)});
+    blocks.push({type:'table', headers:['Jour','Horaires','Module à '+lieuFormation(st)], colFractions:[0.2,0.25,0.55],
       rows: st.planningDojo.map(function(r){ return [r.jour, r.horaires||'—', r.module||'—']; })});
     return blocks;
   }
@@ -1509,7 +1532,9 @@ body.is-offline .offline-banner{ display:block; }
     var unreadBadge = unreadCount>0 ? '<span class="pill pill-warning" title="'+esc(unreadTitle)+'">🔔 '+unreadCount+'</span>' : '';
     return '' +
     '<div class="topbar">' +
-      '<div class="brand"><span class="mark">'+esc(ORG.sigle)+'</span><div><h1>'+esc(ORG.titre)+'</h1><div class="sub">'+esc(ORG.nom)+'</div></div></div>' +
+      (viewerOrganisme()==='AURA'
+        ? '<div class="brand"><span class="mark mark-logo"><img src="'+esc(ORG_AURA.logo)+'" alt="" /></span><div><h1>'+esc(ORG.titre)+'</h1><div class="sub">'+esc(ORG_AURA.nom)+'</div></div></div>'
+        : '<div class="brand"><span class="mark">'+esc(ORG.sigle)+'</span><div><h1>'+esc(ORG.titre)+'</h1><div class="sub">'+esc(ORG.nom)+'</div></div></div>') +
       '<div class="topbar-right">' +
         '<span id="undo-slot">' + undoButtonHtml() + '</span>' +
         unreadBadge +
@@ -1642,17 +1667,30 @@ body.is-offline .offline-banner{ display:block; }
         '</div>' +
         '<div style="display:flex; gap:10px; margin-top:6px;"><button type="button" class="btn btn-primary" data-action="submit-add-formation">Ajouter cette formation</button><button type="button" class="btn" data-action="toggle-add-formation">Annuler</button></div></div>';
     }
-    var cards = allFormations().map(function(f){
+    var orgCount = {};
+    var cardFor = function(f){
       var list = DATA.stagiaires.filter(function(s){ return s.formation===f; });
+      var org = formationOrganisme(f);
+      orgCount[org] = orgCount[org] || {f:0, s:0}; orgCount[org].f++; orgCount[org].s += list.length;
       var eleveCount = list.filter(function(s){ var lp=lastFilledPeriod(s); return lp && lp.risque==='eleve'; }).length;
       var unreadCount = list.filter(hasUnreadMessages).length;
-      return '<div class="formation-card row-click" data-action="open-formation" data-formation="'+esc(f)+'">' +
+      return '<div class="formation-card row-click '+(org==='AURA'?'org-aura':'org-dojo')+'" data-action="open-formation" data-formation="'+esc(f)+'">' +
         '<h3>'+esc(f)+'</h3>' +
-        '<div class="formation-card-meta">'+esc(formationOrganisme(f))+' · '+list.length+' stagiaire'+(list.length===1?'':'s')+
+        '<div class="formation-card-meta">'+list.length+' stagiaire'+(list.length===1?'':'s')+
           (eleveCount ? ' · <span class="pill pill-danger">'+eleveCount+' à risque</span>' : '') +
           (unreadCount ? ' · <span class="pill pill-warning">🔔 '+unreadCount+'</span>' : '') +
         '</div>' +
       '</div>';
+    };
+    // Formations regroupées par organisme (Dojo Academy puis AURA), chacune avec sa couleur.
+    var cards = ORGANISMES.map(function(org){
+      var fs = allFormations().filter(function(f){ return formationOrganisme(f)===org; });
+      if(!fs.length) return '';
+      var html = fs.map(cardFor).join('');
+      var c = orgCount[org];
+      return '<div class="org-head '+(org==='AURA'?'org-aura':'org-dojo')+'"><span class="org-dot"></span>'+esc(org)+
+        '<span class="org-sub">'+c.f+' formation'+(c.f===1?'':'s')+' · '+c.s+' stagiaire'+(c.s===1?'':'s')+'</span></div>' +
+        '<div class="formation-grid">'+html+'</div>';
     }).join('');
     return '' +
     '<div class="stats-row">' +
@@ -1664,7 +1702,7 @@ body.is-offline .offline-banner{ display:block; }
     unreadHtml +
     '<div class="section-head"><h2 style="font-size:1.15rem;">Formations</h2><button type="button" class="btn btn-primary" data-action="toggle-add-formation">+ Ajouter une formation</button></div>' +
     addFormationHtml +
-    '<div class="formation-grid">'+cards+'</div>';
+    cards;
   }
 
   function hasValue(obj){
@@ -2043,8 +2081,8 @@ body.is-offline .offline-banner{ display:block; }
       renderDetailPeriodTuteur(st, dp, canEditTuteur);
   }
 
-  function planningTable(list, kind, editable){
-    var labelCol = kind==='structure' ? 'Activité en structure' : 'Module à '+ORG.nom;
+  function planningTable(list, kind, editable, lieu){
+    var labelCol = kind==='structure' ? 'Activité en structure' : 'Module à '+(lieu || ORG.nom);
     var field = kind==='structure' ? 'activite' : 'module';
     var prefix = kind==='structure' ? 'pS-' : 'pD-';
     if(editable){
@@ -2070,10 +2108,10 @@ body.is-offline .offline-banner{ display:block; }
         '<span class="pb-main">'+label+'</span><span class="pb-sub">'+(isFilled ? 'Rempli' : 'À remplir')+'</span></button>';
     }
     var block = kind==='dojo'
-      ? '<div class="planning-block"><h3>Planning à '+esc(ORG.nom)+'</h3>' + planningTable(st.planningDojo, 'dojo', canEdit) + '</div>'
+      ? '<div class="planning-block"><h3>Planning à '+esc(lieuFormation(st))+'</h3>' + planningTable(st.planningDojo, 'dojo', canEdit, lieuFormation(st)) + '</div>'
       : '<div class="planning-block"><h3>Planning en structure d’accueil</h3>' + planningTable(st.planningStructure, 'structure', canEdit) + '</div>';
     return '' +
-    '<div class="plan-tabs">' + btn('structure', 'Planning structure', filled(st.planningStructure,'activite')) + btn('dojo', 'Planning '+esc(ORG.nom), filled(st.planningDojo,'module')) + '</div>' +
+    '<div class="plan-tabs">' + btn('structure', 'Planning structure', filled(st.planningStructure,'activite')) + btn('dojo', 'Planning '+esc(nomCourtFormation(st)), filled(st.planningDojo,'module')) + '</div>' +
     block +
     '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">' +
       (canEdit ? '<button type="button" class="btn btn-primary" data-action="save-planning" data-id="'+esc(st.id)+'">Enregistrer le planning</button>' : '') +
