@@ -665,6 +665,8 @@ body.is-offline .offline-banner{ display:block; }
   function ucBlocksForFormation(formation, periodIdx){
     // Période 1 : anciennes UC (déjà remplies). Périodes 2 et 3 : blocs de compétences.
     if(BPJEPS_BC_FORMATIONS.indexOf(formation)!==-1 && periodIdx>=1) return UC_BLOCKS_BPJEPS_BC;
+    if(formation==='BPJEPS_BC') return UC_BLOCKS_BPJEPS_BC; // nouvelle formation BPJEPS : blocs pour toutes les périodes
+    if(formationOrganisme(formation)==='AURA') return UC_BLOCKS_BPJEPS_BC; // AURA : blocs de compétences pour toutes les périodes
     if(formation==='BPJEPS AF IJ' || formation==='BPJEPS AF INSEP') return UC_BLOCKS_BPJEPS_AF;
     if(formation==='DEJEPS IJ' || formation==='DEJEPS INSEP') return UC_BLOCKS_DEJEPS;
     if(formation==='DESJEPS PERF IJ' || formation==='DESJEPS PERF INSEP') return UC_BLOCKS_DESJEPS_PERF;
@@ -679,10 +681,22 @@ body.is-offline .offline-banner{ display:block; }
   var UC_LEVELS = [['','Non évalué'],['debutant',"Débutant(e)"],['initie',"Initié(e)"],['debrouille',"Débrouillé(e)"],['confirme',"Confirmé(e)"],['expert',"Expert(e)"]];
 
   var DATA = { comptes: [], stagiaires: [], formations: [] };
-  var FORMATION_MODELES = [['','BPJEPS (référentiel standard)'],['BPJEPS AF IJ','BPJEPS AF'],['DEJEPS IJ','DEJEPS'],['DESJEPS PERF IJ','DESJEPS Performance'],['DESJEPS ASEC DSP','DESJEPS ASEC']];
+  var FORMATION_MODELES = [['BPJEPS_BC','BPJEPS judo (blocs de compétences)'],['','BPJEPS (anciennes UC)'],['BPJEPS AF IJ','BPJEPS AF'],['DEJEPS IJ','DEJEPS'],['DESJEPS PERF IJ','DESJEPS Performance'],['DESJEPS ASEC DSP','DESJEPS ASEC']];
   // Une formation d'origine "supprimée" est cachée par une ligne marqueur dans la table formations (pas besoin de toucher au schéma).
   var HIDDEN_PREFIX = '__masquee__';
   DATA.hidden = [];
+  var ORGANISMES = ['Dojo Academy','AURA'];
+  function formationOrganisme(nom){
+    for(var i=0;i<DATA.formations.length;i++){ if(DATA.formations[i].nom===nom) return DATA.formations[i].organisme || ORGANISMES[0]; }
+    return ORGANISMES[0];
+  }
+  function setFormationOrganisme(nom, organisme){
+    DATA.formations.forEach(function(f){ if(f.nom===nom) f.organisme = organisme; });
+    return sb.rpc('rpc_set_formation_organisme', { p_nom: nom, p_organisme: organisme }).then(function(r){
+      if(r.error) showToast('Formation ajoutée, mais l’organisme n’a pas pu être enregistré (mise à jour de la base à faire).');
+      return r;
+    });
+  }
   function allFormations(){
     var out = FORMATIONS.filter(function(f){ return DATA.hidden.indexOf(f)===-1; });
     DATA.formations.forEach(function(f){ if(out.indexOf(f.nom)===-1) out.push(f.nom); });
@@ -824,7 +838,7 @@ body.is-offline .offline-banner{ display:block; }
       DATA.comptes = compRes.data.map(rowToCompte);
       var formRows = (formRes && !formRes.error && formRes.data) ? formRes.data : [];
       DATA.hidden = formRows.filter(function(r){ return r.nom.indexOf(HIDDEN_PREFIX)===0; }).map(function(r){ return r.nom.slice(HIDDEN_PREFIX.length); });
-      DATA.formations = formRows.filter(function(r){ return r.nom.indexOf(HIDDEN_PREFIX)!==0; }).map(function(r){ return {nom:r.nom, modele:r.modele||''}; });
+      DATA.formations = formRows.filter(function(r){ return r.nom.indexOf(HIDDEN_PREFIX)!==0; }).map(function(r){ return {nom:r.nom, modele:r.modele||'', organisme:r.organisme||ORGANISMES[0]}; });
       syncStatus = 'shared';
     }).catch(function(err){ syncStatus = 'error'; console.error(err); });
   }
@@ -1198,12 +1212,12 @@ body.is-offline .offline-banner{ display:block; }
       return r;
     });
   }
-  function formationAdd(nom, modele, wasHidden){
+  function formationAdd(nom, modele, wasHidden, organisme){
     var rq = wasHidden ? sb.rpc('rpc_delete_formation', { p_nom: HIDDEN_PREFIX+nom }) : sb.rpc('rpc_add_formation', { p_nom: nom, p_modele: modele });
     return rq.then(function(r){
       if(!r.error){
         if(wasHidden){ DATA.hidden = DATA.hidden.filter(function(n){ return n!==nom; }); }
-        else if(!DATA.formations.some(function(f){ return f.nom===nom; })){ DATA.formations.push({nom:nom, modele:modele}); }
+        else if(!DATA.formations.some(function(f){ return f.nom===nom; })){ DATA.formations.push({nom:nom, modele:modele, organisme:organisme||ORGANISMES[0]}); if(organisme && organisme!==ORGANISMES[0]) setFormationOrganisme(nom, organisme); }
         render();
       }
       return r;
@@ -1614,7 +1628,10 @@ body.is-offline .offline-banner{ display:block; }
       addFormationHtml = '<div class="card add-form" style="margin-bottom:16px;"><h3 style="margin-bottom:14px;">Nouvelle formation</h3>' +
         '<div class="form-grid">' +
           '<div class="field"><label for="newformation-nom">Nom de la formation</label><input id="newformation-nom" placeholder="ex. BPJEPS AF Paris" /></div>' +
-          '<div class="field"><label for="newformation-modele">Référentiel de compétences à utiliser</label><select id="newformation-modele">' +
+          '<div class="field"><label for="newformation-organisme">Organisme de formation</label><select id="newformation-organisme">' +
+            ORGANISMES.map(function(o){ return '<option value="'+esc(o)+'">'+esc(o)+'</option>'; }).join('') +
+          '</select></div>' +
+          '<div class="field" id="newformation-modele-field"><label for="newformation-modele">Référentiel de compétences à utiliser</label><select id="newformation-modele">' +
             FORMATION_MODELES.map(function(m){ return '<option value="'+esc(m[0])+'">'+esc(m[1])+'</option>'; }).join('') +
           '</select></div>' +
         '</div>' +
@@ -1626,7 +1643,7 @@ body.is-offline .offline-banner{ display:block; }
       var unreadCount = list.filter(hasUnreadMessages).length;
       return '<div class="formation-card row-click" data-action="open-formation" data-formation="'+esc(f)+'">' +
         '<h3>'+esc(f)+'</h3>' +
-        '<div class="formation-card-meta">'+list.length+' stagiaire'+(list.length===1?'':'s')+
+        '<div class="formation-card-meta">'+esc(formationOrganisme(f))+' · '+list.length+' stagiaire'+(list.length===1?'':'s')+
           (eleveCount ? ' · <span class="pill pill-danger">'+eleveCount+' à risque</span>' : '') +
           (unreadCount ? ' · <span class="pill pill-warning">🔔 '+unreadCount+'</span>' : '') +
         '</div>' +
@@ -2723,6 +2740,8 @@ body.is-offline .offline-banner{ display:block; }
     if(action==='submit-add-formation'){
       var fNom = getVal('newformation-nom').replace(/\s+/g,' ').trim();
       var fModele = getVal('newformation-modele');
+      var fOrg = getVal('newformation-organisme') || ORGANISMES[0];
+      if(fOrg==='AURA') fModele = 'BPJEPS_BC';
       if(!fNom){ showToast('Merci de renseigner le nom de la formation.'); return; }
       var dup = allFormations().some(function(f){ return f.toLowerCase()===fNom.toLowerCase(); });
       if(dup){ showToast('Cette formation existe déjà.'); return; }
@@ -2732,14 +2751,14 @@ body.is-offline .offline-banner{ display:block; }
       addReq.then(function(res){
         if(res.error){ showToast('Impossible d’ajouter la formation : '+res.error.message); return; }
         if(hiddenMatch){ DATA.hidden = DATA.hidden.filter(function(n){ return n!==hiddenMatch; }); fNom = hiddenMatch; }
-        else { DATA.formations.push({nom:fNom, modele:fModele}); }
+        else { DATA.formations.push({nom:fNom, modele:fModele, organisme:fOrg}); setFormationOrganisme(fNom, fOrg); }
         view.showAddFormation = false; view.selectedFormation = fNom; view.selectedId = null; view.showAdd = false;
         saveView(); render();
         showToast('Formation ajoutée.');
-        var addedName = fNom, addedHidden = !!hiddenMatch, addedModele = fModele;
+        var addedName = fNom, addedHidden = !!hiddenMatch, addedModele = fModele, addedOrg = fOrg;
         pushUndo('Ajout de la formation « '+addedName+' »',
           function(){ return formationRemove(addedName, addedHidden); },
-          function(){ return formationAdd(addedName, addedModele, addedHidden); });
+          function(){ return formationAdd(addedName, addedModele, addedHidden, addedOrg); });
       });
       return;
     }
@@ -2749,6 +2768,7 @@ body.is-offline .offline-banner{ display:block; }
       if(formationHasStagiaires(fDel)){ showToast('Cette formation contient encore des stagiaires.'); return; }
       var builtin = FORMATIONS.indexOf(fDel)!==-1;
       var fModele = '';
+      var fOrgDel = formationOrganisme(fDel);
       DATA.formations.forEach(function(f){ if(f.nom===fDel) fModele = f.modele; });
       var req = builtin ? sb.rpc('rpc_add_formation', { p_nom: HIDDEN_PREFIX+fDel, p_modele: '' }) : sb.rpc('rpc_delete_formation', { p_nom: fDel });
       req.then(function(res){
@@ -2758,7 +2778,7 @@ body.is-offline .offline-banner{ display:block; }
         view.selectedFormation = null; view.showAdd = false; saveView(); render();
         showToast('Formation supprimée.');
         pushUndo('Suppression de la formation « '+fDel+' »',
-          function(){ return formationAdd(fDel, fModele, builtin); },
+          function(){ return formationAdd(fDel, fModele, builtin, fOrgDel); },
           function(){ return formationRemove(fDel, builtin); });
       });
       return;
@@ -3076,6 +3096,10 @@ body.is-offline .offline-banner{ display:block; }
   }
   document.addEventListener('change', function(e){
     var sel = e.target;
+    if(sel && sel.id==='newformation-organisme'){
+      var mf = document.getElementById('newformation-modele-field');
+      if(mf) mf.style.display = sel.value==='AURA' ? 'none' : '';
+    }
     if(sel && sel.classList && sel.classList.contains('uc-level')){
       sel.className = 'uc-level ' + lvlClass(sel.value);
     } else if(sel && sel.classList && sel.classList.contains('crit-level')){
