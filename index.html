@@ -570,6 +570,38 @@ body.is-offline .offline-banner{ display:block; }
       ['dj44',"C4.4 EC d'assurer la sécurité des pratiquants et des tiers en judo-jujitsu tout en impliquant les pratiquants dans la gestion de leur propre sécurité et de celle des tiers."]
     ]}
   ];
+  // BPJEPS judo (IJ, INSEP, FOAD) : blocs de compétences du RNCP 40424 (intitulés condensés), utilisés à partir de la période 2.
+  var UC_BLOCKS_BPJEPS_BC = [
+    { titre:"Bloc 1 : Concevoir et mettre en œuvre des projets d’animation", items:[
+      ["bc1_1","C1.1 Se repérer dans son territoire et identifier les acteurs locaux"],
+      ["bc1_2","C1.2 Identifier les publics cibles de la structure et leurs besoins, notamment les publics en situation de handicap"],
+      ["bc1_3","C1.3 Repérer les demandes des publics et des acteurs du territoire"],
+      ["bc1_4","C1.4 Formuler des propositions de projets adaptées aux besoins du public et aux ressources de la structure"],
+      ["bc1_5","C1.5 Planifier et organiser un projet dans le cadre de la structure"],
+      ["bc1_6","C1.6 Suivre les actions du projet et organiser le travail de l’équipe"],
+      ["bc1_7","C1.7 Remplir les obligations administratives liées aux activités, avec des outils numériques"],
+      ["bc1_8","C1.8 Analyser le projet conduit et en évaluer les résultats"],
+      ["bc1_9","C1.9 Restituer les conclusions du projet à son responsable et proposer des améliorations"]
+    ]},
+    { titre:"Bloc 2 : Valoriser les activités et les projets de la structure", items:[
+      ["bc2_1","C2.1 Communiquer sur les activités proposées pour mobiliser les publics"],
+      ["bc2_2","C2.2 Adapter sa communication aux publics, notamment en situation de handicap"],
+      ["bc2_3","C2.3 Choisir les outils de communication adaptés aux objectifs et aux publics"],
+      ["bc2_4","C2.4 Rédiger des contenus de communication pour promouvoir une animation"]
+    ]},
+    { titre:"Bloc 3 : Concevoir, conduire en sécurité et évaluer des séances de judo-jujitsu", items:[
+      ["bc3_1","C3.1 Définir les finalités d’un cycle de séances de judo-jujitsu"],
+      ["bc3_2","C3.2 Définir les objectifs, le contenu et le déroulement des séances d’un cycle"],
+      ["bc3_3","C3.3 Définir les conditions de réalisation d’une séance en sécurité"],
+      ["bc3_4","C3.4 Vérifier les conditions de réalisation d’une séance"],
+      ["bc3_5","C3.5 Accueillir les pratiquants et présenter la séance"],
+      ["bc3_6","C3.6 Conduire une séance de judo-jujitsu en sécurité"],
+      ["bc3_7","C3.7 Repérer les difficultés des pratiquants et leur apporter des conseils personnalisés"],
+      ["bc3_8","C3.8 Préparer les pratiquants aux dans et grades (du 1er au 4e dan)"],
+      ["bc3_9","C3.9 Analyser une séance pour l’améliorer"],
+      ["bc3_10","C3.10 Évaluer un cycle de séances pour faire progresser les pratiquants"]
+    ]}
+  ];
   var UC_BLOCKS_DESJEPS_PERF = [
     { titre:"UC1 : Être capable de construire la stratégie d'une organisation du secteur", items:[
       ['dp11',"C1.1 EC de préparer la prise de décision en prenant en compte les caractéristiques et besoins singuliers des publics."],
@@ -592,7 +624,7 @@ body.is-offline .offline-banner{ display:block; }
       ['dp41',"C4.1 EC de réaliser en sécurité les démonstrations techniques en judo-jujitsu."],
       ['dp42',"C4.2 EC d'adapter sa posture pédagogique et les démarches d'intervention afin que chaque sportif évolue en sécurité."],
       ['dp43',"C4.3 EC de réaliser les gestes professionnels nécessaires à la sécurité des pratiquants en judo-jujitsu en prenant en compte leurs caractéristiques singulières physiques, motrices, sensorielles, cognitives et psychiques."],
-      ['dp44',"OI 4.3 EC d'assurer la sécurité des pratiquants et des tiers en judo-jujitsu tout en impliquant les pratiquants dans la gestion de leur propre sécurité et de celle des tiers."]
+      ['dp44',"C4.4 EC d'assurer la sécurité des pratiquants et des tiers en judo-jujitsu tout en impliquant les pratiquants dans la gestion de leur propre sécurité et de celle des tiers."]
     ]}
   ];
   var UC_BLOCKS_DESJEPS_ASEC = [
@@ -629,14 +661,17 @@ body.is-offline .offline-banner{ display:block; }
       ['az44',"C4.2.2 Organiser et prioriser la gestion matérielle et logistique de la structure, en tenant compte de l'évolution de ses besoins et des ressources à disposition, en vue de faciliter la mise en œuvre en sécurité des activités et du projet de développement."]
     ]}
   ];
-  function ucBlocksForFormation(formation){
+  var BPJEPS_BC_FORMATIONS = ['BPJEPS IJ','BPJEPS INSEP','BPJEPS FOAD'];
+  function ucBlocksForFormation(formation, periodIdx){
+    // Période 1 : anciennes UC (déjà remplies). Périodes 2 et 3 : blocs de compétences.
+    if(BPJEPS_BC_FORMATIONS.indexOf(formation)!==-1 && periodIdx>=1) return UC_BLOCKS_BPJEPS_BC;
     if(formation==='BPJEPS AF IJ' || formation==='BPJEPS AF INSEP') return UC_BLOCKS_BPJEPS_AF;
     if(formation==='DEJEPS IJ' || formation==='DEJEPS INSEP') return UC_BLOCKS_DEJEPS;
     if(formation==='DESJEPS PERF IJ' || formation==='DESJEPS PERF INSEP') return UC_BLOCKS_DESJEPS_PERF;
     if(formation==='DESJEPS ASEC DSP') return UC_BLOCKS_DESJEPS_ASEC;
     for(var i=0;i<DATA.formations.length;i++){
       var fm = DATA.formations[i];
-      if(fm.nom===formation && fm.modele && fm.modele!==formation) return ucBlocksForFormation(fm.modele);
+      if(fm.nom===formation && fm.modele && fm.modele!==formation) return ucBlocksForFormation(fm.modele, periodIdx);
     }
     return UC_BLOCKS_DEFAULT;
   }
@@ -936,7 +971,7 @@ body.is-offline .offline-banner{ display:block; }
         levelClasses: CRIT1.map(function(c){ return critClass(d.criteres1[c[0]]); }),
         rows: CRIT1.map(function(c){ return [c[1], d.criteres1[c[0]] || '—']; })});
       blocks.push({type:'h3', text:'Référentiel de compétences'});
-      ucBlocksForFormation(st.formation).forEach(function(b){
+      ucBlocksForFormation(st.formation, idx).forEach(function(b){
         blocks.push({type:'p', label:b.titre});
         blocks.push({type:'table', headers:['Compétence','Niveau'], colFractions:[0.74,0.26],
           levelClasses: b.items.map(function(it){ return lvlClass(d.uc[it[0]]); }),
@@ -1938,7 +1973,7 @@ body.is-offline .offline-banner{ display:block; }
     html += '<h4 class="suivi-subtitle">Critères</h4>';
     html += critGrid(CRIT1, d.criteres1, 'c1', idx, editable);
     html += '<h4 class="suivi-subtitle">Référentiel de compétences</h4>';
-    html += ucBlocksForFormation(st.formation).map(function(b){ return ucBlockHtml(b, d.uc, idx, editable); }).join('');
+    html += ucBlocksForFormation(st.formation, idx).map(function(b){ return ucBlockHtml(b, d.uc, idx, editable); }).join('');
     if(editable){
       html += '<button type="button" class="btn btn-primary" data-action="save-detail-stagiaire" data-id="'+esc(st.id)+'" data-idx="'+idx+'" style="margin-top:10px;">Enregistrer cette période</button>';
     }
@@ -2831,7 +2866,7 @@ body.is-offline .offline-banner{ display:block; }
         d.difficultesStagiaire = getVal('d-'+pidxS+'-difficultesStagiaire');
         d.remarquesStagiaire = getVal('d-'+pidxS+'-remarquesStagiaire');
         CRIT1.forEach(function(c){ d.criteres1[c[0]] = getVal('c1-'+pidxS+'-'+c[0]); });
-        ucBlocksForFormation(s.formation).forEach(function(b){ b.items.forEach(function(it){ d.uc[it[0]] = getVal('uc-'+pidxS+'-'+it[0]); }); });
+        ucBlocksForFormation(s.formation, pidxS).forEach(function(b){ b.items.forEach(function(it){ d.uc[it[0]] = getVal('uc-'+pidxS+'-'+it[0]); }); });
       });
       return;
     }
