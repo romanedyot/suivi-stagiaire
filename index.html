@@ -3525,30 +3525,39 @@ body.is-offline .offline-banner{ display:block; }
       var X = window.XLSX;
       var dfr = function(iso){ return iso ? iso.split('-').reverse().join('/') : ''; };
       var infos = list.map(function(s){ return {
-        'Nom': (s.nom||'').toUpperCase(), 'Prénom': s.prenom, 'Formation': s.formation,
-        'Date de naissance': dfr(s.dateNaissance), 'Téléphone': s.telephone, 'E-mail': s.email,
+        'Nom': (s.nom||'').toUpperCase(), 'Prénom': s.prenom, 'Adresse mail stagiaire': s.email, 'Téléphone stagiaire': s.telephone,
+        'Nom du tuteur': s.tuteurNom, 'Téléphone du tuteur': s.tuteurTelephone, 'Adresse mail du tuteur': s.tuteurEmail,
+        'Carte pro du tuteur': s.tuteurCartePro, 'Dernier diplôme du tuteur': s.tuteurDiplome,
+        'Nom du 2e tuteur': s.tuteur2Nom, 'Téléphone du 2e tuteur': s.tuteur2Telephone, 'Adresse mail du 2e tuteur': s.tuteur2Email,
+        'Carte pro du 2e tuteur': s.tuteur2CartePro, 'Dernier diplôme du 2e tuteur': s.tuteur2Diplome,
         'Structure d’accueil': s.structureNom, 'Adresse de la structure': s.structureAdresse,
-        'Tuteur': s.tuteurNom, 'Téléphone tuteur': s.tuteurTelephone, 'E-mail tuteur': s.tuteurEmail, 'Carte pro tuteur': s.tuteurCartePro, 'Dernier diplôme tuteur': s.tuteurDiplome,
-        'Deuxième tuteur': s.tuteur2Nom, 'Téléphone 2e tuteur': s.tuteur2Telephone, 'E-mail 2e tuteur': s.tuteur2Email, 'Carte pro 2e tuteur': s.tuteur2CartePro, 'Dernier diplôme 2e tuteur': s.tuteur2Diplome
+        'Date de naissance': dfr(s.dateNaissance), 'Formation': s.formation
       }; });
+      var keys = Object.keys(infos[0]);
       var wb = X.utils.book_new(), w1 = X.utils.json_to_sheet(infos);
-      w1['!cols'] = Object.keys(infos[0]).map(function(k){ return {wch: Math.max(14, Math.min(40, k.length+6))}; });
+      // largeur de colonne d'après le contenu le plus long
+      w1['!cols'] = keys.map(function(k){
+        var m = k.length; infos.forEach(function(r){ m = Math.max(m, String(r[k]||'').length); });
+        return { wch: Math.min(50, Math.round(m * 1.15) + 6) };
+      });
       w1['!autofilter'] = { ref: w1['!ref'] };
-      // Mise en forme : en-tête bleu foncé, cases encadrées de noir, une ligne sur deux en bleu clair.
-      var bord = { style:'thin', color:{ rgb:'000000' } };
+      // Mise en forme : en-tête bleu marine, cases encadrées, une ligne sur deux légèrement grisée.
+      var bord = { style:'thin', color:{ rgb:'B8C2D6' } };
       var cadre = { top:bord, bottom:bord, left:bord, right:bord };
       var plage = X.utils.decode_range(w1['!ref']);
       for(var R = plage.s.r; R <= plage.e.r; R++){
         for(var C = plage.s.c; C <= plage.e.c; C++){
           var ref = X.utils.encode_cell({r:R, c:C});
           if(!w1[ref]) w1[ref] = { t:'s', v:'' };
-          w1[ref].s = R===0
-            ? { font:{ bold:true, color:{ rgb:'FFFFFF' } }, fill:{ fgColor:{ rgb:'1B3A9E' } }, border:cadre, alignment:{ vertical:'center', horizontal:'center', wrapText:true } }
-            : { border:cadre, alignment:{ vertical:'center', wrapText:true }, fill: (R%2===0 ? { fgColor:{ rgb:'E1EBFC' } } : undefined) };
-          if(R>0 && !w1[ref].s.fill) delete w1[ref].s.fill;
+          var st = R===0
+            ? { font:{ name:'Arial', sz:12, bold:true, color:{ rgb:'FFFFFF' } }, fill:{ patternType:'solid', fgColor:{ rgb:'14234A' } }, border:cadre, alignment:{ vertical:'center', horizontal:'left' } }
+            : { font:{ name:'Arial', sz:12, color:{ rgb:'000000' } }, border:cadre, alignment:{ vertical:'center', horizontal:'left' } };
+          if(R>0 && R%2===0) st.fill = { patternType:'solid', fgColor:{ rgb:'F1F4F9' } };
+          w1[ref].s = st;
         }
       }
-      w1['!rows'] = [{ hpt: 32 }];
+      w1['!rows'] = [];
+      for(var r = 0; r <= plage.e.r; r++) w1['!rows'].push({ hpt: r===0 ? 28 : 24 });
       X.utils.book_append_sheet(wb, w1, 'Stagiaires');
       X.writeFile(wb, 'Stagiaires_'+fileSafe(formation)+'.xlsx', { bookSST: true, cellStyles: true });
       showToast('Export Excel prêt ('+list.length+' stagiaires).');
