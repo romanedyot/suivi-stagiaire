@@ -3549,9 +3549,8 @@ body.is-offline .offline-banner{ display:block; }
         }
       }
       w1['!rows'] = [{ hpt: 32 }];
-      w1['!freeze'] = { xSplit: 2, ySplit: 1 };
       X.utils.book_append_sheet(wb, w1, 'Stagiaires');
-      X.writeFile(wb, 'Stagiaires_'+fileSafe(formation)+'.xlsx');
+      X.writeFile(wb, 'Stagiaires_'+fileSafe(formation)+'.xlsx', { bookSST: true, cellStyles: true });
       showToast('Export Excel prêt ('+list.length+' stagiaires).');
     }).catch(function(){ showToast('Export impossible : vérifiez la connexion et réessayez.'); });
   }
