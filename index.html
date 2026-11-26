@@ -215,6 +215,10 @@ tr:last-child td{ border-bottom:none; }
 .contact-links{ display:flex; gap:12px; font-size:0.82rem; }
 .contact-links a{ text-decoration:underline; text-underline-offset:2px; }
 .card{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; box-shadow:var(--shadow); }
+.row-exclu td{ background:#FBE3E1 !important; color:#8E1B12; }
+.pill-exclu{ background:#C0392B; color:#fff; border:none; }
+.exclu-banner{ background:#C0392B; color:#fff; font-weight:700; padding:10px 14px; border-radius:10px; margin:10px 0 12px; letter-spacing:.02em; }
+.btn-danger-outline{ border-color:#C0392B !important; color:#C0392B !important; }
 .fiche-header{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:6px; flex-wrap:wrap; }
 .fiche-header h2{ font-size:1.4rem; }
 .fiche-header .meta{ color:var(--text-muted); font-size:0.86rem; margin-top:3px; }
@@ -715,6 +719,10 @@ body.is-offline .offline-banner{ display:block; }
   var FORMATION_MODELES = [['BPJEPS_BC','BPJEPS judo (blocs de compétences)'],['','BPJEPS (anciennes UC)'],['BPJEPS AF IJ','BPJEPS AF'],['DEJEPS IJ','DEJEPS'],['DESJEPS PERF IJ','DESJEPS Performance'],['DESJEPS ASEC DSP','DESJEPS ASEC']];
   // Une formation d'origine "supprimée" est cachée par une ligne marqueur dans la table formations (pas besoin de toucher au schéma).
   var HIDDEN_PREFIX = '__masquee__';
+  // Stagiaire exclu de formation : ligne marqueur « __exclu__<id> » dans la table formations (pas besoin de toucher au schéma).
+  var EXCLU_PREFIX = '__exclu__';
+  DATA.exclus = [];
+  function isExclu(st){ return !!st && DATA.exclus.indexOf(st.id)!==-1; }
   DATA.hidden = [];
   var ORGANISMES = ['Dojo Academy','AURA'];
   // Formations proposées pour l'AURA : [type affiché, référentiel utilisé]. Nom créé : « <type> AURA ».
@@ -889,6 +897,8 @@ body.is-offline .offline-banner{ display:block; }
       DATA.stagiaires.forEach(function(s){ if(pendingOps[s.id]) applyOps(s, pendingOps[s.id]); });
       DATA.comptes = compRes.data.map(rowToCompte);
       var formRows = (formRes && !formRes.error && formRes.data) ? formRes.data : [];
+      DATA.exclus = formRows.filter(function(r){ return r.nom.indexOf(EXCLU_PREFIX)===0; }).map(function(r){ return r.nom.slice(EXCLU_PREFIX.length); });
+      formRows = formRows.filter(function(r){ return r.nom.indexOf(EXCLU_PREFIX)!==0; });
       DATA.hidden = formRows.filter(function(r){ return r.nom.indexOf(HIDDEN_PREFIX)===0; }).map(function(r){ return r.nom.slice(HIDDEN_PREFIX.length); });
       DATA.formations = formRows.filter(function(r){ return r.nom.indexOf(HIDDEN_PREFIX)!==0; }).map(function(r){ return {nom:r.nom, modele:r.modele||'', organisme:r.organisme||ORGANISMES[0]}; });
       syncStatus = 'shared';
@@ -1760,8 +1770,8 @@ body.is-offline .offline-banner{ display:block; }
       var lp = lastFilledPeriod(st);
       var risk = lp ? lp.risque : '';
       var next = lp ? lp.prochaineVisite : '';
-      return '<tr class="row-click" data-action="open-stagiaire" data-id="'+esc(st.id)+'">' +
-        '<td><strong>'+esc(fullName(st))+'</strong>'+(hasUnreadMessages(st) ? ' <span title="Message en attente de réponse">🔔</span>' : '')+'</td>' +
+      return '<tr class="row-click'+(isExclu(st)?' row-exclu':'')+'" data-action="open-stagiaire" data-id="'+esc(st.id)+'">' +
+        '<td><strong>'+esc(fullName(st))+'</strong>'+(isExclu(st) ? ' <span class="pill pill-exclu">Exclu de formation</span>' : '')+(hasUnreadMessages(st) ? ' <span title="Message en attente de réponse">🔔</span>' : '')+'</td>' +
         '<td>'+esc(st.structureNom)+'</td>' +
         '<td>'+esc(tuteursLabel(st))+'</td>' +
         '<td><span class="pill '+riskClass(risk)+'">'+riskLabel(risk)+'</span></td>' +
@@ -1895,8 +1905,13 @@ body.is-offline .offline-banner{ display:block; }
       '</select><button type="button" class="btn btn-sm" data-action="save-formation" data-id="'+esc(st.id)+'">Déplacer vers cette formation</button></div>'
     ) : '';
     var canEditPhoto = editable || view.role==='stagiaire';
+    var excluBanner = (isExclu(st) && isFullAccess()) ? '<div class="exclu-banner">⛔ Exclu de formation</div>' : '';
+    var excluBtn = isFullAccess()
+      ? '<div style="margin:6px 0 12px;"><button type="button" class="btn btn-sm'+(isExclu(st)?'':' btn-danger-outline')+'" data-action="toggle-exclu" data-id="'+esc(st.id)+'">'+(isExclu(st)?'Annuler l’exclusion':'Marquer comme exclu de formation')+'</button></div>'
+      : '';
     return '' +
       backBtn +
+      excluBanner +
       '<div class="fiche-header">' +
         '<div><h2>'+esc(fullName(st))+'</h2><div class="meta">'+esc(st.formation)+' · '+esc(st.structureNom)+'</div></div>' +
         '<div class="fiche-header-right">' +
@@ -1905,6 +1920,7 @@ body.is-offline .offline-banner{ display:block; }
         '</div>' +
       '</div>' +
       moveFormation +
+      excluBtn +
       '<div class="tabs fiche-tabs">'+tabBtns+'</div>' +
       '<div class="card">'+body+'</div>' +
       bottomNav;
@@ -2973,6 +2989,18 @@ body.is-offline .offline-banner{ display:block; }
         CRIT1.forEach(function(c){ d.criteresTuteur[c[0]] = getVal('ct-'+pidxT+'-'+c[0]); });
         d.tuteurDifficultes = getVal('d-'+pidxT+'-tuteurDifficultes');
         d.tuteurRemarques = getVal('d-'+pidxT+'-tuteurRemarques');
+      });
+      return;
+    }
+    if(action==='toggle-exclu'){
+      var stEx = findStagiaire(id); if(!stEx) return;
+      var deja = isExclu(stEx);
+      if(!deja && !confirm('Marquer '+fullName(stEx)+' comme exclu de formation ?')) return;
+      var reqEx = deja ? sb.rpc('rpc_delete_formation', { p_nom: EXCLU_PREFIX+stEx.id }) : sb.rpc('rpc_add_formation', { p_nom: EXCLU_PREFIX+stEx.id, p_modele: '' });
+      reqEx.then(function(res){
+        if(res.error){ showToast('Impossible d’enregistrer : '+res.error.message); return; }
+        if(deja) DATA.exclus = DATA.exclus.filter(function(x){ return x!==stEx.id; }); else DATA.exclus.push(stEx.id);
+        render(); showToast(deja ? 'Exclusion annulée.' : fullName(stEx)+' est marqué comme exclu de formation.');
       });
       return;
     }
