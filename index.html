@@ -3521,7 +3521,7 @@ body.is-offline .offline-banner{ display:block; }
   function exportExcelFormation(formation){
     var list = sortedStagiaires(DATA.stagiaires.filter(function(s){ return s.formation===formation; }));
     if(!list.length){ showToast('Aucun stagiaire dans cette formation.'); return; }
-    loadScriptOnce('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js').then(function(){
+    loadScriptOnce('https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js').then(function(){
       var X = window.XLSX;
       var dfr = function(iso){ return iso ? iso.split('-').reverse().join('/') : ''; };
       var infos = list.map(function(s){ return {
@@ -3534,6 +3534,22 @@ body.is-offline .offline-banner{ display:block; }
       var wb = X.utils.book_new(), w1 = X.utils.json_to_sheet(infos);
       w1['!cols'] = Object.keys(infos[0]).map(function(k){ return {wch: Math.max(14, Math.min(40, k.length+6))}; });
       w1['!autofilter'] = { ref: w1['!ref'] };
+      // Mise en forme : en-tête bleu foncé, cases encadrées de noir, une ligne sur deux en bleu clair.
+      var bord = { style:'thin', color:{ rgb:'000000' } };
+      var cadre = { top:bord, bottom:bord, left:bord, right:bord };
+      var plage = X.utils.decode_range(w1['!ref']);
+      for(var R = plage.s.r; R <= plage.e.r; R++){
+        for(var C = plage.s.c; C <= plage.e.c; C++){
+          var ref = X.utils.encode_cell({r:R, c:C});
+          if(!w1[ref]) w1[ref] = { t:'s', v:'' };
+          w1[ref].s = R===0
+            ? { font:{ bold:true, color:{ rgb:'FFFFFF' } }, fill:{ fgColor:{ rgb:'1B3A9E' } }, border:cadre, alignment:{ vertical:'center', horizontal:'center', wrapText:true } }
+            : { border:cadre, alignment:{ vertical:'center', wrapText:true }, fill: (R%2===0 ? { fgColor:{ rgb:'E1EBFC' } } : undefined) };
+          if(R>0 && !w1[ref].s.fill) delete w1[ref].s.fill;
+        }
+      }
+      w1['!rows'] = [{ hpt: 32 }];
+      w1['!freeze'] = { xSplit: 2, ySplit: 1 };
       X.utils.book_append_sheet(wb, w1, 'Stagiaires');
       X.writeFile(wb, 'Stagiaires_'+fileSafe(formation)+'.xlsx');
       showToast('Export Excel prêt ('+list.length+' stagiaires).');
