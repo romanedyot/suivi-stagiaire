@@ -3510,6 +3510,28 @@ body.is-offline .offline-banner{ display:block; }
       im.src = url;
     });
   }
+  // Classeur Excel mis en forme (en-tête bleu marine, Arial, cases encadrées, lignes alternées) ; renvoie les octets du fichier.
+  function classeurStyle(rows, nomFeuille){
+    var X = window.XLSX, keys = Object.keys(rows[0]);
+    var ws = X.utils.json_to_sheet(rows), wb = X.utils.book_new();
+    ws['!cols'] = keys.map(function(k){ var m = k.length; rows.forEach(function(r){ m = Math.max(m, String(r[k]||'').length); }); return { wch: Math.min(50, Math.round(m*1.15)+6) }; });
+    ws['!autofilter'] = { ref: ws['!ref'] };
+    var bord = { style:'thin', color:{ rgb:'B8C2D6' } }, cadre = { top:bord, bottom:bord, left:bord, right:bord };
+    var plage = X.utils.decode_range(ws['!ref']);
+    for(var R = plage.s.r; R <= plage.e.r; R++){
+      for(var C = plage.s.c; C <= plage.e.c; C++){
+        var ref = X.utils.encode_cell({r:R, c:C}); if(!ws[ref]) ws[ref] = { t:'s', v:'' };
+        var st = R===0
+          ? { font:{ name:'Arial', sz:12, bold:true, color:{ rgb:'FFFFFF' } }, fill:{ patternType:'solid', fgColor:{ rgb:'14234A' } }, border:cadre, alignment:{ vertical:'center', horizontal:'left' } }
+          : { font:{ name:'Arial', sz:12, color:{ rgb:'000000' } }, border:cadre, alignment:{ vertical:'center', horizontal:'left' } };
+        if(R>0 && R%2===0) st.fill = { patternType:'solid', fgColor:{ rgb:'F1F4F9' } };
+        ws[ref].s = st;
+      }
+    }
+    ws['!rows'] = []; for(var r = 0; r <= plage.e.r; r++) ws['!rows'].push({ hpt: r===0 ? 28 : 24 });
+    X.utils.book_append_sheet(wb, ws, nomFeuille);
+    return X.write(wb, { type:'array', bookType:'xlsx', bookSST:true, cellStyles:true });
+  }
   // Export pour les cartes étudiantes : un zip avec une photo par stagiaire (NOM_Prenom.png) et la liste (nom, date de naissance, formation).
   function exportCartesEtudiantes(formation){
     var list = sortedStagiaires(DATA.stagiaires.filter(function(s){ return s.formation===formation && !isExclu(s); }));
@@ -3517,22 +3539,23 @@ body.is-offline .offline-banner{ display:block; }
     showToast('Préparation de l’export… (quelques secondes)');
     Promise.all([
       loadScriptOnce('https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'),
+      loadScriptOnce('https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js'),
       sb.from('stagiaires').select('id,photo').eq('formation', formation)
     ]).then(function(res){
-      var photos = {}; ((res[1] && res[1].data) || []).forEach(function(r){ photos[r.id] = r.photo || ''; });
+      var photos = {}; ((res[2] && res[2].data) || []).forEach(function(r){ photos[r.id] = r.photo || ''; });
       var zip = new window.JSZip(), folder = zip.folder('Photos_'+fileSafe(formation));
-      var lignes = ['NOM Prenom;Date de naissance;Formation;Photo'];
+      var lignes = [];
       var sansPhoto = [], sansDate = [];
       return Promise.all(list.map(function(s){
         var nomFichier = fileSafe(s.nom).toUpperCase()+'_'+fileSafe(s.prenom).replace(/(^|-)([a-z])/g, function(m,a,b){ return a+b.toUpperCase(); })+'.png';
         var ph = photos[s.id] || '';
         if(!s.dateNaissance) sansDate.push(fullName(s));
         var dn = s.dateNaissance ? s.dateNaissance.split('-').reverse().join('/') : '';
-        if(!/^data:image\//.test(ph)){ sansPhoto.push(fullName(s)); lignes.push(fileSafe(s.nom).toUpperCase().replace(/-/g,' ')+' '+s.prenom+';'+dn+';'+s.formation+';(pas de photo)'); return null; }
-        lignes.push(fileSafe(s.nom).toUpperCase().replace(/-/g,' ')+' '+s.prenom+';'+dn+';'+s.formation+';'+nomFichier);
+        lignes.push({ 'Nom': (s.nom||'').toUpperCase(), 'Prénom': s.prenom, 'Date de naissance': dn });
+        if(!/^data:image\//.test(ph)){ sansPhoto.push(fullName(s)); return null; }
         return dataUrlToPngBlob(ph).then(function(b){ if(b) folder.file(nomFichier, b); });
       })).then(function(){
-        zip.file('Liste_cartes_etudiantes_'+fileSafe(formation)+'.csv', '\ufeff'+lignes.join('\r\n'));
+        zip.file('Liste_cartes_etudiantes_'+fileSafe(formation)+'.xlsx', classeurStyle(lignes, 'Cartes étudiantes'));
         return zip.generateAsync({type:'blob'});
       }).then(function(blob){
         var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'Cartes_etudiantes_'+fileSafe(formation)+'.zip';
