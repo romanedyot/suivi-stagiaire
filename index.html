@@ -2018,6 +2018,7 @@ body.is-offline .offline-banner{ display:block; }
     '<button type="button" class="btn btn-ghost" data-action="back-to-formations">← Retour aux formations</button>' +
     '<div class="section-head" style="margin-top:14px;"><h2 style="font-size:1.15rem;">'+esc(formation)+'</h2><div style="display:flex;gap:10px;flex-wrap:wrap;">' +
       (!list.length ? '<button type="button" class="btn" data-action="delete-formation" data-formation="'+esc(formation)+'">Supprimer cette formation</button>' : '') +
+      (list.length ? '<button type="button" class="btn" data-action="export-excel" data-formation="'+esc(formation)+'">📊 Export Excel</button>' : '') +
       (list.length ? '<button type="button" class="btn" data-action="export-cartes" data-formation="'+esc(formation)+'">🪪 Export cartes étudiantes</button>' : '') +
       '<button type="button" class="btn btn-primary" data-action="toggle-add-form">+ Ajouter un stagiaire</button></div></div>' +
     addForm +
@@ -3275,6 +3276,7 @@ body.is-offline .offline-banner{ display:block; }
       else { prompt('Copiez ces adresses :', txt); }
       return;
     }
+    if(action==='export-excel'){ exportExcelFormation(el.getAttribute('data-formation')); return; }
     if(action==='export-cartes'){ exportCartesEtudiantes(el.getAttribute('data-formation')); return; }
     if(action==='toggle-exclu'){
       var stEx = findStagiaire(id); if(!stEx) return;
@@ -3512,6 +3514,44 @@ body.is-offline .offline-banner{ display:block; }
         if(sansDate.length) msg += ' Sans date de naissance : '+sansDate.length+'.';
         showToast(msg);
       });
+    }).catch(function(){ showToast('Export impossible : vérifiez la connexion et réessayez.'); });
+  }
+
+  // Export Excel d'une formation : une ligne par stagiaire avec toutes les infos de sa fiche, et une feuille « Suivi » par période.
+  function exportExcelFormation(formation){
+    var list = sortedStagiaires(DATA.stagiaires.filter(function(s){ return s.formation===formation; }));
+    if(!list.length){ showToast('Aucun stagiaire dans cette formation.'); return; }
+    loadScriptOnce('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js').then(function(){
+      var X = window.XLSX;
+      var dfr = function(iso){ return iso ? iso.split('-').reverse().join('/') : ''; };
+      var etatTxt = function(e){ return e==='complet' ? 'Complète' : (e==='incomplet' ? 'Incomplète' : 'Vide'); };
+      var infos = list.map(function(s){ return {
+        'Nom': (s.nom||'').toUpperCase(), 'Prénom': s.prenom, 'Formation': s.formation, 'Organisme': formationOrganisme(s.formation),
+        'Statut': isExclu(s) ? 'Exclu de formation' : '', 'Date de naissance': dfr(s.dateNaissance), 'Téléphone': s.telephone, 'E-mail': s.email,
+        'Identifiant': s.identifiantStagiaire, 'Structure d’accueil': s.structureNom, 'Adresse de la structure': s.structureAdresse,
+        'Tuteur': s.tuteurNom, 'Téléphone tuteur': s.tuteurTelephone, 'E-mail tuteur': s.tuteurEmail, 'Carte pro tuteur': s.tuteurCartePro, 'Dernier diplôme tuteur': s.tuteurDiplome,
+        'Deuxième tuteur': s.tuteur2Nom, 'Téléphone 2e tuteur': s.tuteur2Telephone, 'E-mail 2e tuteur': s.tuteur2Email, 'Carte pro 2e tuteur': s.tuteur2CartePro, 'Dernier diplôme 2e tuteur': s.tuteur2Diplome
+      }; });
+      var suivi = list.map(function(s){
+        var row = { 'Nom': (s.nom||'').toUpperCase(), 'Prénom': s.prenom };
+        [0,1,2].forEach(function(i){
+          var q = (s.suivis||[])[i] || {}, P = 'P'+(i+1)+' ';
+          row[P+'date de visite'] = dfr(q.dateVisite); row[P+'prochaine visite'] = dfr(q.prochaineVisite);
+          row[P+'risque de rupture'] = q.risque ? riskLabel(q.risque) : '';
+          row[P+'fiche stagiaire'] = etatTxt(ficheEtat(s, i, 'stagiaire')); row[P+'fiche tuteur'] = etatTxt(ficheEtat(s, i, 'tuteur'));
+          row[P+'note interne'] = q.noteInterne || '';
+        });
+        return row;
+      });
+      var wb = X.utils.book_new();
+      var w1 = X.utils.json_to_sheet(infos), w2 = X.utils.json_to_sheet(suivi);
+      w1['!cols'] = Object.keys(infos[0]).map(function(k){ return {wch: Math.max(12, Math.min(40, k.length+4))}; });
+      w2['!cols'] = Object.keys(suivi[0]).map(function(k){ return {wch: /note/.test(k) ? 40 : Math.max(12, k.length+2)}; });
+      w1['!autofilter'] = { ref: w1['!ref'] }; w2['!autofilter'] = { ref: w2['!ref'] };
+      X.utils.book_append_sheet(wb, w1, 'Infos stagiaires');
+      X.utils.book_append_sheet(wb, w2, 'Suivi par période');
+      X.writeFile(wb, 'Stagiaires_'+fileSafe(formation)+'.xlsx');
+      showToast('Export Excel prêt ('+list.length+' stagiaires).');
     }).catch(function(){ showToast('Export impossible : vérifiez la connexion et réessayez.'); });
   }
 
