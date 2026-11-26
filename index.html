@@ -215,6 +215,36 @@ tr:last-child td{ border-bottom:none; }
 .contact-links{ display:flex; gap:12px; font-size:0.82rem; }
 .contact-links a{ text-decoration:underline; text-underline-offset:2px; }
 .card{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; box-shadow:var(--shadow); }
+.required-note{ font-size:0.82rem; color:var(--text-muted); margin:0 0 10px; }
+.req-star{ color:#C0392B; font-weight:700; }
+.fiche-status{ border-radius:10px; padding:10px 14px; margin:0 0 14px; font-size:0.88rem; }
+.fiche-status.ok{ background:#DDF1E4; color:#1E5B3B; border:1px solid #9BD3B0; }
+.fiche-status.ko{ background:#FDE9D2; color:#7A4508; border:1px solid #F2C58A; }
+textarea.is-missing, select.is-missing{ border-color:#C0392B !important; box-shadow:0 0 0 2px rgba(192,57,43,.18) !important; }
+.home-search{ margin:4px 0 18px; position:relative; }
+.home-search input{ width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--border); background:var(--surface); font-size:0.98rem; color:var(--text); }
+.search-results{ margin-top:8px; background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:var(--shadow); }
+.search-results:empty{ display:none; }
+.search-item{ display:flex; justify-content:space-between; gap:10px; width:100%; text-align:left; padding:10px 14px; border:0; border-bottom:1px solid var(--border); background:transparent; cursor:pointer; color:var(--text); font:inherit; }
+.search-item:last-child{ border-bottom:0; }
+.search-item:hover{ background:var(--surface-alt); }
+.search-item small{ color:var(--text-muted); }
+.search-empty{ padding:10px 14px; color:var(--text-muted); font-size:0.9rem; }
+.dash-table td, .dash-table th{ vertical-align:top; }
+.dash-count{ white-space:nowrap; font-size:0.86rem; }
+.dash-count b{ font-size:1rem; }
+.dash-actions{ display:flex; flex-direction:column; gap:6px; }
+.dash-detail td{ background:var(--surface-alt); }
+.dash-list{ display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:6px 18px; font-size:0.86rem; }
+.st-ok{ color:#1E7A4B; font-weight:600; } .st-mid{ color:#B3690F; font-weight:600; } .st-no{ color:#C0392B; font-weight:600; }
+.crop-overlay{ position:fixed; inset:0; background:rgba(10,20,40,.72); z-index:60; display:flex; align-items:center; justify-content:center; padding:16px; }
+.crop-card{ background:var(--surface); border-radius:16px; padding:18px; width:100%; max-width:380px; box-shadow:var(--shadow); }
+.crop-card h3{ margin:0 0 4px; }
+.crop-frame{ position:relative; width:240px; height:320px; margin:12px auto; overflow:hidden; border-radius:10px; background:#ddd; touch-action:none; cursor:grab; }
+.crop-frame img{ position:absolute; left:0; top:0; transform-origin:0 0; user-select:none; -webkit-user-drag:none; max-width:none; }
+.crop-guide{ position:absolute; inset:0; pointer-events:none; border:2px solid rgba(255,255,255,.85); border-radius:10px; }
+.crop-guide::after{ content:''; position:absolute; left:22%; right:22%; top:12%; height:56%; border:2px dashed rgba(255,255,255,.75); border-radius:50%; }
+.crop-warn{ background:#FDE9D2; color:#7A4508; border-radius:8px; padding:8px 10px; font-size:0.82rem; margin:6px 0; }
 .row-exclu td{ background:#FBE3E1 !important; color:#8E1B12; }
 .pill-exclu{ background:#C0392B; color:#fff; border:none; }
 .exclu-banner{ background:#C0392B; color:#fff; font-weight:700; padding:10px 14px; border-radius:10px; margin:10px 0 12px; letter-spacing:.02em; }
@@ -723,6 +753,66 @@ body.is-offline .offline-banner{ display:block; }
   var EXCLU_PREFIX = '__exclu__';
   DATA.exclus = [];
   function isExclu(st){ return !!st && DATA.exclus.indexOf(st.id)!==-1; }
+
+  // ---------- complétude des feuilles de suivi (toutes les cases sont obligatoires) ----------
+  function evalAt(st, idx){ return ((st.evaluations||[])[idx]) || {}; }
+  function filledTxt(v){ return !!(v && String(v).trim()); }
+  function stagiaireMissing(st, idx){
+    var d = evalAt(st, idx), m = [];
+    if(!filledTxt(d.competencesAcquisesStagiaire)) m.push('les compétences acquises');
+    if(!filledTxt(d.difficultesStagiaire)) m.push('les difficultés rencontrées');
+    if(!filledTxt(d.remarquesStagiaire)) m.push('les autres remarques');
+    var c = CRIT1.filter(function(x){ return !(d.criteres1||{})[x[0]]; }).length;
+    if(c) m.push(c+' critère'+(c>1?'s':''));
+    var keys = []; ucBlocksForFormation(st.formation, idx).forEach(function(b){ b.items.forEach(function(it){ keys.push(it[0]); }); });
+    var u = keys.filter(function(k){ return !(d.uc||{})[k]; }).length;
+    if(u) m.push(u+' compétence'+(u>1?'s':'')+' du référentiel');
+    return m;
+  }
+  function tuteurMissing(st, idx){
+    var d = evalAt(st, idx), m = [];
+    if(!filledTxt(d.tuteurCompetencesAcquises)) m.push('les compétences acquises');
+    if(!filledTxt(d.tuteurDifficultes)) m.push('les difficultés rencontrées par le stagiaire');
+    if(!filledTxt(d.tuteurRemarques)) m.push('les autres remarques');
+    var c = CRIT1.filter(function(x){ return !(d.criteresTuteur||{})[x[0]]; }).length;
+    if(c) m.push(c+' critère'+(c>1?'s':''));
+    return m;
+  }
+  function anyFilled(obj){ return Object.keys(obj||{}).some(function(k){ return !!obj[k]; }); }
+  // 'complet' | 'incomplet' | 'vide'
+  function ficheEtat(st, idx, who){
+    var d = evalAt(st, idx);
+    if(who==='tuteur'){
+      if(!tuteurMissing(st, idx).length) return 'complet';
+      return (filledTxt(d.tuteurCompetencesAcquises)||filledTxt(d.tuteurDifficultes)||filledTxt(d.tuteurRemarques)||anyFilled(d.criteresTuteur)) ? 'incomplet' : 'vide';
+    }
+    if(!stagiaireMissing(st, idx).length) return 'complet';
+    return (filledTxt(d.competencesAcquisesStagiaire)||filledTxt(d.difficultesStagiaire)||filledTxt(d.remarquesStagiaire)||anyFilled(d.criteres1)||anyFilled(d.uc)) ? 'incomplet' : 'vide';
+  }
+  function joinFr(list){ return list.length<2 ? list.join('') : list.slice(0,-1).join(', ')+' et '+list[list.length-1]; }
+  function ficheStatusHtml(st, idx, who){
+    var m = who==='tuteur' ? tuteurMissing(st, idx) : stagiaireMissing(st, idx);
+    if(!m.length) return '<div class="fiche-status ok">✅ Fiche complète pour cette période.</div>';
+    return '<div class="fiche-status ko">⚠️ Fiche incomplète : il reste à remplir '+esc(joinFr(m))+'.</div>';
+  }
+  var EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+  function validEmail(e){ return EMAIL_RE.test(String(e||'').trim()); }
+  // Cases mises en rouge après un clic sur « Enregistrer » d'une fiche incomplète.
+  var missingShown = {};
+  function highlightMissing(){
+    Object.keys(missingShown).forEach(function(key){
+      var p = key.split('|'), who = p[1], idx = p[2];
+      var ids = who==='tuteur'
+        ? ['d-'+idx+'-tuteurCompetencesAcquises','d-'+idx+'-tuteurDifficultes','d-'+idx+'-tuteurRemarques']
+        : ['d-'+idx+'-competencesAcquisesStagiaire','d-'+idx+'-difficultesStagiaire','d-'+idx+'-remarquesStagiaire'];
+      ids.forEach(function(i){ var el=document.getElementById(i); if(el && !el.value.trim()) el.classList.add('is-missing'); });
+      var sel = who==='tuteur' ? 'select[id^="ct-'+idx+'-"]' : 'select[id^="c1-'+idx+'-"], select[id^="uc-'+idx+'-"]';
+      Array.prototype.forEach.call(document.querySelectorAll(sel), function(el){ if(!el.value) el.classList.add('is-missing'); });
+    });
+  }
+  document.addEventListener('input', function(e){ if(e.target && e.target.classList && e.target.value) e.target.classList.remove('is-missing'); });
+  document.addEventListener('change', function(e){ if(e.target && e.target.classList && e.target.value) e.target.classList.remove('is-missing'); });
+  var autosaving = false;
   DATA.hidden = [];
   var ORGANISMES = ['Dojo Academy','AURA'];
   // Formations proposées pour l'AURA : [type affiché, référentiel utilisé]. Nom créé : « <type> AURA ».
@@ -818,7 +908,7 @@ body.is-offline .offline-banner{ display:block; }
   // ---------- Supabase : chargement des données ----------
   // Les photos pèsent l'essentiel des données : la liste est chargée sans elles,
   // et la photo d'un stagiaire n'est téléchargée qu'à l'ouverture de sa fiche.
-  var STAGIAIRE_COLS = 'id,prenom,nom,formation,telephone,email,structure_nom,structure_adresse,tuteur_nom,tuteur_telephone,tuteur_email,tuteur2_nom,tuteur2_telephone,tuteur2_email,identifiant_stagiaire,mot_de_passe_defini_stagiaire,planning_structure,planning_dojo,documents,visites,suivis,evaluations,messages';
+  var STAGIAIRE_COLS = 'id,prenom,nom,formation,telephone,email,date_naissance,structure_nom,structure_adresse,tuteur_nom,tuteur_telephone,tuteur_email,tuteur2_nom,tuteur2_telephone,tuteur2_email,identifiant_stagiaire,mot_de_passe_defini_stagiaire,planning_structure,planning_dojo,documents,visites,suivis,evaluations,messages';
   var photoCache = {};
   var photoPending = {};
   function ensurePhoto(id){
@@ -840,7 +930,7 @@ body.is-offline .offline-banner{ display:block; }
     if(row.photo !== undefined) photoCache[row.id] = row.photo || '';
     return {
       id: row.id, prenom: row.prenom, nom: row.nom, formation: row.formation,
-      telephone: row.telephone, email: row.email,
+      telephone: row.telephone, email: row.email, dateNaissance: row.date_naissance || '',
       structureNom: row.structure_nom, structureAdresse: row.structure_adresse,
       tuteurNom: row.tuteur_nom, tuteurTelephone: row.tuteur_telephone, tuteurEmail: row.tuteur_email,
       tuteur2Nom: row.tuteur2_nom || '', tuteur2Telephone: row.tuteur2_telephone || '', tuteur2Email: row.tuteur2_email || '',
@@ -884,6 +974,11 @@ body.is-offline .offline-banner{ display:block; }
     ]).then(function(results){
       var stagRes = results[0], compRes = results[1], formRes = results[2];
       // Base pas encore mise à jour pour le deuxième tuteur : on recharge sans ces colonnes.
+      // Base pas encore mise à jour pour la date de naissance : on recharge sans cette colonne.
+      if(stagRes.error && /date_naissance/.test(stagRes.error.message || '') && STAGIAIRE_COLS.indexOf('date_naissance')>=0){
+        STAGIAIRE_COLS = STAGIAIRE_COLS.replace(',date_naissance', '');
+        return loadData();
+      }
       if(stagRes.error && /tuteur2_/.test(stagRes.error.message || '') && STAGIAIRE_COLS.indexOf('tuteur2_')>=0){
         STAGIAIRE_COLS = STAGIAIRE_COLS.replace(',tuteur2_nom,tuteur2_telephone,tuteur2_email', '');
         return loadData();
@@ -1066,12 +1161,12 @@ body.is-offline .offline-banner{ display:block; }
       var periodeLabel = periodeTitle(idx, st.suivis[idx] && st.suivis[idx].periode);
       blocks.push({type:'h2', text:periodeLabel});
       blocks.push({type:'p', label:'Compétences acquises (évaluation du tuteur) :', text: d.tuteurCompetencesAcquises});
+      blocks.push({type:'p', label:'Difficultés rencontrées par le stagiaire :', text: d.tuteurDifficultes});
+      blocks.push({type:'p', label:'Autres remarques :', text: d.tuteurRemarques});
       blocks.push({type:'h3', text:'Critères'});
       blocks.push({type:'table', headers:['Critère','Note (0 à 4)'], colFractions:[0.78,0.22],
         levelClasses: CRIT1.map(function(c){ return critClass(d.criteresTuteur && d.criteresTuteur[c[0]]); }),
         rows: CRIT1.map(function(c){ return [c[1], (d.criteresTuteur && d.criteresTuteur[c[0]]) || '—']; })});
-      blocks.push({type:'p', label:'Difficultés rencontrées par le stagiaire :', text: d.tuteurDifficultes});
-      blocks.push({type:'p', label:'Autres remarques :', text: d.tuteurRemarques});
     });
     return blocks;
   }
@@ -1452,6 +1547,7 @@ body.is-offline .offline-banner{ display:block; }
   // ---------- render ----------
   var isRendering = false;
   function render(){
+    setTimeout(highlightMissing, 0);
     var root = document.getElementById('root');
     document.documentElement.classList.toggle('org-aura', view.screen==='app' && viewerOrganisme()==='AURA');
     var html;
@@ -1489,7 +1585,8 @@ body.is-offline .offline-banner{ display:block; }
         '<div class="field"><label for="login-motdepasse">Mot de passe</label><input id="login-motdepasse" type="password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" />' +
           '<label class="show-pass"><input type="checkbox" data-action="toggle-pass" data-target="login-motdepasse" /> Afficher le mot de passe</label></div>' +
         '<button type="button" class="btn btn-primary" data-action="submit-login" style="width:100%;">Se connecter</button>' +
-        '<p style="text-align:center;margin:14px 0 0;"><a href="#" data-action="forgot-open">Mot de passe oublié ?</a></p>' +
+        // « Mot de passe oublié » masqué tant que l'envoi d'e-mail n'est pas installé dans Supabase.
+        (ORG.showForgotPassword ? '<p style="text-align:center;margin:14px 0 0;"><a href="#" data-action="forgot-open">Mot de passe oublié ?</a></p>' : '') +
       '</div>' +
       '<p class="hint-banner" style="margin-top:20px;">Vous ne connaissez pas vos identifiants, ou vous avez oublié votre mot de passe ? ' +
         (ORG.contactEmail || ORG.contactTel
@@ -1623,7 +1720,9 @@ body.is-offline .offline-banner{ display:block; }
     var isRef = isFullAccess();
     var main;
     if(isRef){
-      if(view.selectedId){
+      if(view.showDashboard && !view.selectedId){
+        main = renderDashboard();
+      } else if(view.selectedId){
         var st = findStagiaire(view.selectedId);
         if(!st){ view.selectedId=null; main = renderFormationsHome(); }
         else { main = renderFiche(st); }
@@ -1670,6 +1769,78 @@ body.is-offline .offline-banner{ display:block; }
       }
     });
     return { total:total, eleve:eleve, aVenir15:aVenir15 };
+  }
+
+  function normTxt(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
+  function searchResultsHtml(q){
+    q = normTxt(q).trim();
+    if(q.length<2) return '';
+    var words = q.split(/\s+/);
+    var hit = function(hay){ hay = normTxt(hay); return words.every(function(w){ return hay.indexOf(w)!==-1; }); };
+    var out = [];
+    sortedStagiaires().forEach(function(st){
+      if(hit(st.prenom+' '+st.nom+' '+st.email+' '+st.identifiantStagiaire))
+        out.push('<button type="button" class="search-item" data-action="open-stagiaire" data-id="'+esc(st.id)+'"><span><strong>'+esc(fullName(st))+'</strong>'+(isExclu(st)?' <span class="pill pill-exclu">Exclu</span>':'')+'</span><small>Stagiaire · '+esc(st.formation)+'</small></button>');
+      [['tuteurNom','tuteurEmail'],['tuteur2Nom','tuteur2Email']].forEach(function(k){
+        var nom = st[k[0]], mail = st[k[1]];
+        if((nom||mail) && hit((nom||'')+' '+(mail||'')))
+          out.push('<button type="button" class="search-item" data-action="open-stagiaire" data-id="'+esc(st.id)+'"><span><strong>'+esc(nom||mail)+'</strong> — tuteur de '+esc(fullName(st))+'</span><small>'+esc(st.formation)+'</small></button>');
+      });
+    });
+    if(!out.length) return '<div class="search-empty">Aucun stagiaire ni tuteur ne correspond à « '+esc(q)+' ».</div>';
+    return out.slice(0,25).join('') + (out.length>25 ? '<div class="search-empty">'+(out.length-25)+' autres résultats : précisez votre recherche.</div>' : '');
+  }
+  document.addEventListener('input', function(e){
+    if(!e.target || e.target.id!=='home-search') return;
+    view.homeSearch = e.target.value;
+    var box = document.getElementById('home-search-results');
+    if(box) box.innerHTML = searchResultsHtml(view.homeSearch);
+  });
+
+  // ---------- tableau de suivi des fiches (référent / coordinateurs) ----------
+  function relanceEmails(list, idx, who){
+    var seen = {}, out = [];
+    list.forEach(function(st){
+      if(ficheEtat(st, idx, who)==='complet') return;
+      var mails = who==='tuteur' ? [st.tuteurEmail, st.tuteur2Email] : [st.email];
+      mails.forEach(function(m){ m = String(m||'').trim(); if(validEmail(m) && !seen[m.toLowerCase()]){ seen[m.toLowerCase()]=1; out.push(m); } });
+    });
+    return out;
+  }
+  function etatLabel(e){ return e==='complet' ? '<span class="st-ok">✅ complète</span>' : (e==='incomplet' ? '<span class="st-mid">⚠️ incomplète</span>' : '<span class="st-no">✗ vide</span>'); }
+  function renderDashboard(){
+    var idx = view.dashPeriod || 0;
+    view.dashOpen = view.dashOpen || {};
+    var periodBtns = [0,1,2].map(function(i){ return '<button type="button" class="tab-btn small period-btn '+(idx===i?'active':'')+'" data-action="dash-period" data-idx="'+i+'"><span class="pb-main">Période '+(i+1)+'</span><span class="pb-sub">'+TRIMESTRES[i]+'</span></button>'; }).join('');
+    var all = DATA.stagiaires.filter(function(s){ return !isExclu(s); });
+    var rows = ORGANISMES.map(function(org){
+      var forms = allFormations().filter(function(f){ return formationOrganisme(f)===org; });
+      var r = forms.map(function(f){
+        var list = sortedStagiaires(all.filter(function(s){ return s.formation===f; }));
+        if(!list.length) return '';
+        var cnt = function(who){ var c={complet:0,incomplet:0,vide:0}; list.forEach(function(s){ c[ficheEtat(s, idx, who)]++; }); return c; };
+        var cs = cnt('stagiaire'), ct = cnt('tuteur');
+        var cell = function(c){ return '<div class="dash-count"><b>'+c.complet+'</b> / '+list.length+' complètes'+(c.incomplet?'<br><span class="st-mid">'+c.incomplet+' incomplète'+(c.incomplet>1?'s':'')+'</span>':'')+(c.vide?'<br><span class="st-no">'+c.vide+' vide'+(c.vide>1?'s':'')+'</span>':'')+'</div>'; };
+        var open = !!view.dashOpen[f];
+        var detail = open ? '<tr class="dash-detail"><td colspan="4"><div class="dash-list">' + list.map(function(s){
+            return '<div><a href="#" data-action="open-stagiaire" data-id="'+esc(s.id)+'"><strong>'+esc(fullName(s))+'</strong></a><br>Stagiaire : '+etatLabel(ficheEtat(s, idx, 'stagiaire'))+' · Tuteur : '+etatLabel(ficheEtat(s, idx, 'tuteur'))+'<br><small>'+esc(tuteursLabel(s)||'Pas de tuteur')+'</small></div>';
+          }).join('') + '</div></td></tr>' : '';
+        return '<tr><td><a href="#" data-action="dash-toggle" data-formation="'+esc(f)+'"><strong>'+esc(f)+'</strong></a><br><small>'+(open?'▲ masquer le détail':'▼ voir le détail')+'</small></td>' +
+          '<td>'+cell(cs)+'</td><td>'+cell(ct)+'</td>' +
+          '<td><div class="dash-actions">' +
+            '<button type="button" class="btn btn-sm" data-action="copy-relance" data-formation="'+esc(f)+'" data-who="stagiaire">📋 E-mails stagiaires à relancer</button>' +
+            '<button type="button" class="btn btn-sm" data-action="copy-relance" data-formation="'+esc(f)+'" data-who="tuteur">📋 E-mails tuteurs à relancer</button>' +
+          '</div></td></tr>' + detail;
+      }).join('');
+      return r ? '<tr><td colspan="4" style="background:var(--surface-alt);"><strong>'+esc(org)+'</strong></td></tr>'+r : '';
+    }).join('');
+    return '<button type="button" class="btn btn-ghost" data-action="close-dashboard">← Retour aux formations</button>' +
+      '<div class="section-head" style="margin-top:14px;"><h2 style="font-size:1.15rem;">Suivi des fiches</h2><div style="display:flex;gap:10px;flex-wrap:wrap;">' +
+        '<button type="button" class="btn btn-sm" data-action="copy-relance" data-formation="" data-who="stagiaire">📋 Tous les stagiaires à relancer</button>' +
+        '<button type="button" class="btn btn-sm" data-action="copy-relance" data-formation="" data-who="tuteur">📋 Tous les tuteurs à relancer</button></div></div>' +
+      '<p class="hint-banner">Une fiche est « complète » quand toutes les cases sont remplies. Les boutons copient les adresses des personnes dont la fiche n’est pas complète, prêtes à coller dans le champ Cci d’un e-mail. Les stagiaires exclus ne sont pas comptés.</p>' +
+      '<div class="tabs period-tabs" style="margin-bottom:16px;">'+periodBtns+'</div>' +
+      '<div class="table-wrap"><table class="dash-table"><thead><tr><th>Formation</th><th>Fiches stagiaires</th><th>Fiches tuteurs</th><th>Relances</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
   }
 
   function renderFormationsHome(){
@@ -1738,7 +1909,9 @@ body.is-offline .offline-banner{ display:block; }
     '</div>' +
     priorityHtml +
     unreadHtml +
-    '<div class="section-head"><h2 style="font-size:1.15rem;">Formations</h2><button type="button" class="btn btn-primary" data-action="toggle-add-formation">+ Ajouter une formation</button></div>' +
+    '<div class="home-search"><input id="home-search" type="search" autocomplete="off" placeholder="🔍 Rechercher un stagiaire ou un tuteur (nom, prénom, e-mail)…" value="'+esc(view.homeSearch||'')+'" />' +
+      '<div id="home-search-results" class="search-results">'+searchResultsHtml(view.homeSearch)+'</div></div>' +
+    '<div class="section-head"><h2 style="font-size:1.15rem;">Formations</h2><div style="display:flex;gap:10px;flex-wrap:wrap;"><button type="button" class="btn" data-action="open-dashboard">📋 Suivi des fiches</button><button type="button" class="btn btn-primary" data-action="toggle-add-formation">+ Ajouter une formation</button></div></div>' +
     addFormationHtml +
     cards;
   }
@@ -1792,6 +1965,7 @@ body.is-offline .offline-banner{ display:block; }
     '<button type="button" class="btn btn-ghost" data-action="back-to-formations">← Retour aux formations</button>' +
     '<div class="section-head" style="margin-top:14px;"><h2 style="font-size:1.15rem;">'+esc(formation)+'</h2><div style="display:flex;gap:10px;flex-wrap:wrap;">' +
       (!list.length ? '<button type="button" class="btn" data-action="delete-formation" data-formation="'+esc(formation)+'">Supprimer cette formation</button>' : '') +
+      (list.length ? '<button type="button" class="btn" data-action="export-cartes" data-formation="'+esc(formation)+'">🪪 Export cartes étudiantes</button>' : '') +
       '<button type="button" class="btn btn-primary" data-action="toggle-add-form">+ Ajouter un stagiaire</button></div></div>' +
     addForm +
     (list.length ? '<div class="table-wrap"><table><thead><tr><th>Stagiaire</th><th>Structure</th><th>Tuteur</th><th>Risque</th><th>Feuilles remplies</th><th>Prochaine visite</th><th>Contact</th></tr></thead><tbody>'+rows+'</tbody></table></div>' : '<div class="empty-state">Aucun stagiaire dans cette formation pour le moment.</div>');
@@ -1827,6 +2001,7 @@ body.is-offline .offline-banner{ display:block; }
     return '<div class="form-grid">' +
       f('prenom','Prénom',v.prenom) + f('nom','Nom',v.nom) +
       f('telephone','Téléphone',v.telephone) + f('email','E-mail',v.email,'email') +
+      f('dateNaissance','Date de naissance',v.dateNaissance,'date') + '<div class="field"></div>' +
       f('structureNom','Structure d’accueil',v.structureNom) + f('structureAdresse','Adresse de la structure',v.structureAdresse) +
       f('tuteurNom','Nom du tuteur',v.tuteurNom) + f('tuteurTelephone','Téléphone tuteur',v.tuteurTelephone) +
       f('tuteurEmail','E-mail tuteur',v.tuteurEmail,'email') +
@@ -1942,24 +2117,24 @@ body.is-offline .offline-banner{ display:block; }
   function roItem(k,v){ return '<div class="ro-item"><div class="k">'+k+'</div><div class="v">'+esc(v||'—')+'</div></div>'; }
 
   var SELF_INFO_FIELDS = [
-    ['prenom','Prénom'], ['nom','Nom'], ['telephone','Téléphone'], ['email','E-mail'],
+    ['prenom','Prénom'], ['nom','Nom'], ['telephone','Téléphone'], ['email','E-mail'], ['dateNaissance','Date de naissance'],
     ['structureNom','Structure d’accueil'], ['structureAdresse','Adresse de la structure'],
     ['tuteurNom','Nom du tuteur'], ['tuteurTelephone','Téléphone tuteur'], ['tuteurEmail','E-mail tuteur'],
     ['tuteur2Nom','Nom du deuxième tuteur (facultatif)'], ['tuteur2Telephone','Téléphone deuxième tuteur'], ['tuteur2Email','E-mail deuxième tuteur']
   ];
-  var STAGIAIRE_EDITABLE_FIELDS = ['prenom','nom','telephone','email','structureNom','structureAdresse','tuteurNom','tuteurTelephone','tuteurEmail','tuteur2Nom','tuteur2Telephone','tuteur2Email'];
+  var STAGIAIRE_EDITABLE_FIELDS = ['prenom','nom','telephone','email','dateNaissance','structureNom','structureAdresse','tuteurNom','tuteurTelephone','tuteurEmail','tuteur2Nom','tuteur2Telephone','tuteur2Email'];
   var TUTEUR_EDITABLE_FIELDS = ['tuteurNom','tuteurTelephone','tuteurEmail','tuteur2Nom','tuteur2Telephone','tuteur2Email'];
 
   function renderSelfInfosForm(st, editableFields, hintText){
     var editableHtml = SELF_INFO_FIELDS.filter(function(fd){ return editableFields.indexOf(fd[0])>=0; })
       .map(function(fd){
         var key=fd[0], label=fd[1];
-        var type = (key==='email'||key==='tuteurEmail'||key==='tuteur2Email') ? 'email' : 'text';
+        var type = (key==='email'||key==='tuteurEmail'||key==='tuteur2Email') ? 'email' : (key==='dateNaissance' ? 'date' : 'text');
         return '<div class="field"><label for="self-'+key+'">'+label+'</label><input id="self-'+key+'" type="'+type+'" value="'+esc(st[key])+'" /></div>';
       }).join('');
     var readonlyDefs = SELF_INFO_FIELDS.filter(function(fd){ return editableFields.indexOf(fd[0])<0; });
     var readonlyHtml = readonlyDefs.length ? '<h4 style="font-size:0.9rem;margin:18px 0 10px;">Autres informations</h4><div class="readonly-grid">' +
-      readonlyDefs.map(function(fd){ return roItem(fd[1], st[fd[0]]); }).join('') + '</div>' : '';
+      readonlyDefs.map(function(fd){ return roItem(fd[1], fd[0]==='dateNaissance' ? (st.dateNaissance ? fmtDate(st.dateNaissance) : '') : st[fd[0]]); }).join('') + '</div>' : '';
     return '<p class="hint-banner">'+hintText+'</p>' +
       '<div class="form-grid">'+editableHtml+'</div>' +
       '<button type="button" class="btn btn-primary" data-action="save-self-infos" data-id="'+esc(st.id)+'">Enregistrer</button>' +
@@ -2021,7 +2196,7 @@ body.is-offline .offline-banner{ display:block; }
   // ---------- Mon suivi : feuille détaillée ----------
   function textBlock(idx, field, value, label, editable){
     if(editable){
-      return '<div class="field full"><label for="d-'+idx+'-'+field+'">'+label+'</label><textarea id="d-'+idx+'-'+field+'">'+esc(value)+'</textarea></div>';
+      return '<div class="field full"><label for="d-'+idx+'-'+field+'">'+label+' <span class="req-star">*</span></label><textarea id="d-'+idx+'-'+field+'">'+esc(value)+'</textarea></div>';
     }
     return '<div class="field"><div class="k" style="font-size:.72rem;text-transform:uppercase;color:var(--text-muted);margin-bottom:2px;">'+label+'</div><div class="ro-text">'+esc(value||'—')+'</div></div>';
   }
@@ -2071,6 +2246,7 @@ body.is-offline .offline-banner{ display:block; }
   function renderDetailPeriodStagiaire(st, idx, editable){
     var d = st.evaluations[idx];
     var html = '';
+    if(editable) html += ficheStatusHtml(st, idx, 'stagiaire') + '<p class="required-note"><span class="req-star">*</span> Toutes les cases sont obligatoires : les textes, les critères et le référentiel de compétences.</p>';
     html += textBlock(idx,'competencesAcquisesStagiaire', d.competencesAcquisesStagiaire, 'Les compétences acquises par le/la stagiaire', editable);
     html += textBlock(idx,'difficultesStagiaire', d.difficultesStagiaire, 'Les difficultés rencontrées', editable);
     html += textBlock(idx,'remarquesStagiaire', d.remarquesStagiaire, 'Autres remarques', editable);
@@ -2087,11 +2263,12 @@ body.is-offline .offline-banner{ display:block; }
   function renderDetailPeriodTuteur(st, idx, editable){
     var d = st.evaluations[idx];
     var html = '';
+    if(editable) html += ficheStatusHtml(st, idx, 'tuteur') + '<p class="required-note"><span class="req-star">*</span> Toutes les cases sont obligatoires : les trois textes et les critères.</p>';
     html += textBlock(idx,'tuteurCompetencesAcquises', d.tuteurCompetencesAcquises, 'Les compétences acquises', editable);
-    html += '<h4 class="suivi-subtitle">Critères</h4>';
-    html += critGrid(CRIT1, d.criteresTuteur || {}, 'ct', idx, editable);
     html += textBlock(idx,'tuteurDifficultes', d.tuteurDifficultes, "Les difficultés rencontrées par le stagiaire", editable);
     html += textBlock(idx,'tuteurRemarques', d.tuteurRemarques, 'Autres remarques', editable);
+    html += '<h4 class="suivi-subtitle">Critères</h4>';
+    html += critGrid(CRIT1, d.criteresTuteur || {}, 'ct', idx, editable);
     if(editable){
       html += '<button type="button" class="btn btn-primary" data-action="save-detail-tuteur" data-id="'+esc(st.id)+'" data-idx="'+idx+'" style="margin-top:10px;">Enregistrer cette période</button>';
     }
@@ -2625,7 +2802,7 @@ body.is-offline .offline-banner{ display:block; }
   function readInfosFromForm(target, prefix){
     var fields = ['prenom','nom','telephone','email','structureNom','structureAdresse','tuteurNom','tuteurTelephone','tuteurEmail','identifiantStagiaire','motDePasseStagiaire'];
     fields.forEach(function(f){ target[f] = getVal(prefix+f); });
-    ['tuteur2Nom','tuteur2Telephone','tuteur2Email'].forEach(function(f){ if(document.getElementById(prefix+f)) target[f] = getVal(prefix+f); });
+    ['tuteur2Nom','tuteur2Telephone','tuteur2Email','dateNaissance'].forEach(function(f){ if(document.getElementById(prefix+f)) target[f] = getVal(prefix+f); });
     if(!target.identifiantStagiaire){ target.identifiantStagiaire = pseudoFromName(target.prenom, target.nom); }
     if(target.motDePasseStagiaire){ target.motDePasseDefiniStagiaire = true; }
     // L’accès tuteur n’est plus saisi ici : il est géré automatiquement par
@@ -2636,6 +2813,24 @@ body.is-offline .offline-banner{ display:block; }
     delete target.motDePasseDefiniTuteur;
   }
 
+  function setDateNaissance(id, value){
+    return sb.rpc('rpc_set_date_naissance', { p_id: id, p_date: value || null }).then(function(r){
+      if(r.error){ showToast('La date de naissance n’a pas pu être enregistrée (mise à jour de la base à faire).'); return false; }
+      return true;
+    });
+  }
+  function afterFicheSave(id, idx, who){
+    var st = findStagiaire(id); if(!st) return;
+    var key = id+'|'+who+'|'+idx;
+    var m = who==='tuteur' ? tuteurMissing(st, idx) : stagiaireMissing(st, idx);
+    if(m.length){
+      missingShown[key] = true; render();
+      showToast('Enregistré, mais la fiche n’est pas complète : il reste à remplir '+joinFr(m)+'. Les cases en rouge sont obligatoires.');
+    } else {
+      delete missingShown[key]; render();
+      showToast('Fiche complète enregistrée. Merci !');
+    }
+  }
   function resetNav(){
     view.tab = 'infos'; view.detailPeriod = 0; docEditBuffer=null; tasksEditBuffer=null; visiteEditBuffer=null; view.confirmDeleteStagiaire=false;
   }
@@ -2790,15 +2985,17 @@ body.is-offline .offline-banner{ display:block; }
       return;
     }
     if(action==='open-formation'){
+      view.showDashboard = false;
       view.selectedFormation = el.getAttribute('data-formation'); view.selectedId=null; view.showAdd=false; view.accountPanelOpen=false;
       saveView(); render(); animateIn(); return;
     }
     if(action==='back-to-formations'){
-      view.selectedFormation = null; view.selectedId = null; view.showAdd=false; view.accountPanelOpen=false;
+      view.selectedFormation = null; view.selectedId = null; view.showAdd=false; view.accountPanelOpen=false; view.showDashboard=false;
       saveView(); render(); animateIn(); return;
     }
     if(action==='open-stagiaire'){
       var stOpen = findStagiaire(id);
+      view.showDashboard = false; view.homeSearch = '';
       view.selectedId = id;
       if(stOpen) view.selectedFormation = stOpen.formation;
       resetNav(); view.accountPanelOpen=false; saveView(); render(); animateIn(); return;
@@ -2882,6 +3079,7 @@ body.is-offline .offline-banner{ display:block; }
       sb.rpc('rpc_create_stagiaire', { p_data: nst, p_password: newPwd || null }).then(function(res){
         if(res.error || !res.data){ showToast('Impossible d’ajouter ce stagiaire : '+(res.error?res.error.message:'')); return; }
         nst.id = res.data;
+        if(nst.dateNaissance) setDateNaissance(nst.id, nst.dateNaissance);
         nst.motDePasseDefiniStagiaire = !!newPwd;
         if(!newPwd) nst.motDePasseStagiaire = 'Provisoire2026!';
         DATA.stagiaires.push(nst);
@@ -2904,7 +3102,11 @@ body.is-offline .offline-banner{ display:block; }
     }
     if(action==='save-infos'){
       var newPwdInfos = getVal('c-motDePasseStagiaire');
-      updateStagiaire(id, function(s){ readInfosFromForm(s, 'c-'); }, newPwdInfos ? null : 'Informations mises à jour.');
+      var stDn = findStagiaire(id), oldDn = stDn ? (stDn.dateNaissance||'') : '';
+      var badMail = ['c-email','c-tuteurEmail','c-tuteur2Email'].filter(function(f){ var v=getVal(f); return v && !validEmail(v); });
+      updateStagiaire(id, function(s){ readInfosFromForm(s, 'c-'); }, (newPwdInfos || badMail.length) ? null : 'Informations mises à jour.');
+      if(badMail.length) showToast('Attention : une adresse e-mail ne semble pas valide ('+getVal(badMail[0])+'). Vérifiez-la.');
+      if(document.getElementById('c-dateNaissance') && getVal('c-dateNaissance')!==oldDn) setDateNaissance(id, getVal('c-dateNaissance'));
       if(newPwdInfos){
         applyPasswordReset({kind:'stagiaire', id:id}, newPwdInfos).then(function(ok){
           if(ok){ var s=findStagiaire(id); if(s){ s.motDePasseDefiniStagiaire=true; render(); } showToast('Informations et mot de passe enregistrés.'); }
@@ -2977,7 +3179,8 @@ body.is-offline .offline-banner{ display:block; }
         d.remarquesStagiaire = getVal('d-'+pidxS+'-remarquesStagiaire');
         CRIT1.forEach(function(c){ d.criteres1[c[0]] = getVal('c1-'+pidxS+'-'+c[0]); });
         ucBlocksForFormation(s.formation, pidxS).forEach(function(b){ b.items.forEach(function(it){ d.uc[it[0]] = getVal('uc-'+pidxS+'-'+it[0]); }); });
-      });
+      }, null);
+      if(!autosaving) afterFicheSave(id, pidxS, 'stagiaire');
       return;
     }
     if(action==='save-detail-tuteur'){
@@ -2989,9 +3192,26 @@ body.is-offline .offline-banner{ display:block; }
         CRIT1.forEach(function(c){ d.criteresTuteur[c[0]] = getVal('ct-'+pidxT+'-'+c[0]); });
         d.tuteurDifficultes = getVal('d-'+pidxT+'-tuteurDifficultes');
         d.tuteurRemarques = getVal('d-'+pidxT+'-tuteurRemarques');
-      });
+      }, null);
+      if(!autosaving) afterFicheSave(id, pidxT, 'tuteur');
       return;
     }
+    if(action==='open-dashboard'){ view.showDashboard = true; view.selectedId = null; view.selectedFormation = null; saveView(); render(); animateIn(); return; }
+    if(action==='close-dashboard'){ view.showDashboard = false; saveView(); render(); animateIn(); return; }
+    if(action==='dash-period'){ view.dashPeriod = parseInt(el.getAttribute('data-idx'),10)||0; saveView(); render(); return; }
+    if(action==='dash-toggle'){ var df = el.getAttribute('data-formation'); view.dashOpen = view.dashOpen || {}; view.dashOpen[df] = !view.dashOpen[df]; saveView(); render(); return; }
+    if(action==='copy-relance'){
+      var rf = el.getAttribute('data-formation'), rw = el.getAttribute('data-who'), ri = view.dashPeriod || 0;
+      var rlist = DATA.stagiaires.filter(function(s){ return !isExclu(s) && (!rf || s.formation===rf); });
+      var mails = relanceEmails(rlist, ri, rw);
+      if(!mails.length){ showToast('Personne à relancer : toutes les fiches '+(rw==='tuteur'?'tuteur':'stagiaire')+' sont complètes.'); return; }
+      var txt = mails.join('; ');
+      var done = function(){ showToast(mails.length+' adresse'+(mails.length>1?'s':'')+' copiée'+(mails.length>1?'s':'')+' : collez-les dans le champ Cci de votre e-mail.'); };
+      if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(done, function(){ prompt('Copiez ces adresses :', txt); }); }
+      else { prompt('Copiez ces adresses :', txt); }
+      return;
+    }
+    if(action==='export-cartes'){ exportCartesEtudiantes(el.getAttribute('data-formation')); return; }
     if(action==='toggle-exclu'){
       var stEx = findStagiaire(id); if(!stEx) return;
       var deja = isExclu(stEx);
@@ -3159,9 +3379,13 @@ body.is-offline .offline-banner{ display:block; }
     if(action==='save-self-infos'){
       var selfEditableKeys = view.role==='stagiaire' ? STAGIAIRE_EDITABLE_FIELDS : (view.role==='tuteur' ? TUTEUR_EDITABLE_FIELDS : []);
       if(!selfEditableKeys.length) return;
+      var stSelf = findStagiaire(id), oldSelfDn = stSelf ? (stSelf.dateNaissance||'') : '';
+      var badSelf = ['self-email','self-tuteurEmail','self-tuteur2Email'].filter(function(f){ var v=document.getElementById(f) ? getVal(f) : ''; return v && !validEmail(v); });
       updateStagiaire(id, function(s){
-        selfEditableKeys.forEach(function(k){ s[k] = getVal('self-'+k); });
-      }, 'Informations mises à jour.');
+        selfEditableKeys.forEach(function(k){ if(document.getElementById('self-'+k)) s[k] = getVal('self-'+k); });
+      }, badSelf.length ? null : 'Informations mises à jour.');
+      if(badSelf.length) showToast('Attention : l’adresse e-mail « '+getVal(badSelf[0])+' » ne semble pas valide. Vérifiez-la.');
+      if(document.getElementById('self-dateNaissance') && getVal('self-dateNaissance')!==oldSelfDn) setDateNaissance(id, getVal('self-dateNaissance'));
       return;
     }
   }
@@ -3173,12 +3397,118 @@ body.is-offline .offline-banner{ display:block; }
     });
   }
 
+  function loadScriptOnce(src){
+    return new Promise(function(res, rej){
+      if(document.querySelector('script[src="'+src+'"]')) return res();
+      var s = document.createElement('script'); s.src = src; s.onload = function(){ res(); }; s.onerror = rej; document.head.appendChild(s);
+    });
+  }
+  function fileSafe(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+  function dataUrlToPngBlob(url){
+    return new Promise(function(res){
+      var im = new Image();
+      im.onload = function(){ var c=document.createElement('canvas'); c.width=im.naturalWidth; c.height=im.naturalHeight; c.getContext('2d').drawImage(im,0,0); c.toBlob(function(b){ res(b); }, 'image/png'); };
+      im.onerror = function(){ res(null); };
+      im.src = url;
+    });
+  }
+  // Export pour les cartes étudiantes : un zip avec une photo par stagiaire (NOM_Prenom.png) et la liste (nom, date de naissance, formation).
+  function exportCartesEtudiantes(formation){
+    var list = sortedStagiaires(DATA.stagiaires.filter(function(s){ return s.formation===formation && !isExclu(s); }));
+    if(!list.length){ showToast('Aucun stagiaire dans cette formation.'); return; }
+    showToast('Préparation de l’export… (quelques secondes)');
+    Promise.all([
+      loadScriptOnce('https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js'),
+      sb.from('stagiaires').select('id,photo').eq('formation', formation)
+    ]).then(function(res){
+      var photos = {}; ((res[1] && res[1].data) || []).forEach(function(r){ photos[r.id] = r.photo || ''; });
+      var zip = new window.JSZip(), folder = zip.folder('Photos_'+fileSafe(formation));
+      var lignes = ['NOM Prenom;Date de naissance;Formation;Photo'];
+      var sansPhoto = [], sansDate = [];
+      return Promise.all(list.map(function(s){
+        var nomFichier = fileSafe(s.nom).toUpperCase()+'_'+fileSafe(s.prenom).replace(/(^|-)([a-z])/g, function(m,a,b){ return a+b.toUpperCase(); })+'.png';
+        var ph = photos[s.id] || '';
+        if(!s.dateNaissance) sansDate.push(fullName(s));
+        var dn = s.dateNaissance ? s.dateNaissance.split('-').reverse().join('/') : '';
+        if(!/^data:image\//.test(ph)){ sansPhoto.push(fullName(s)); lignes.push(fileSafe(s.nom).toUpperCase().replace(/-/g,' ')+' '+s.prenom+';'+dn+';'+s.formation+';(pas de photo)'); return null; }
+        lignes.push(fileSafe(s.nom).toUpperCase().replace(/-/g,' ')+' '+s.prenom+';'+dn+';'+s.formation+';'+nomFichier);
+        return dataUrlToPngBlob(ph).then(function(b){ if(b) folder.file(nomFichier, b); });
+      })).then(function(){
+        zip.file('Liste_cartes_etudiantes_'+fileSafe(formation)+'.csv', '\ufeff'+lignes.join('\r\n'));
+        return zip.generateAsync({type:'blob'});
+      }).then(function(blob){
+        var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'Cartes_etudiantes_'+fileSafe(formation)+'.zip';
+        document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+        var msg = 'Export prêt ('+list.length+' stagiaires).';
+        if(sansPhoto.length) msg += ' Sans photo : '+sansPhoto.length+'.';
+        if(sansDate.length) msg += ' Sans date de naissance : '+sansDate.length+'.';
+        showToast(msg);
+      });
+    }).catch(function(){ showToast('Export impossible : vérifiez la connexion et réessayez.'); });
+  }
+
+  // ---------- recadrage de la photo avant l'enregistrement ----------
+  var cropState = null;
+  function openPhotoCropper(img, stagiaireId){
+    var FW = 240, FH = 320;
+    var base = Math.max(FW / img.naturalWidth, FH / img.naturalHeight);
+    cropState = { img: img, id: stagiaireId, base: base, zoom: 1, x: (FW - img.naturalWidth*base)/2, y: (FH - img.naturalHeight*base)/2, FW: FW, FH: FH };
+    var small = img.naturalWidth < 300 || img.naturalHeight < 400;
+    var ov = document.createElement('div');
+    ov.className = 'crop-overlay'; ov.id = 'crop-overlay';
+    ov.innerHTML = '<div class="crop-card" role="dialog" aria-label="Cadrer la photo"><h3>Cadrer la photo</h3>' +
+      '<p class="required-note" style="margin:0;">Déplacez la photo avec le doigt ou la souris et zoomez pour que le visage tienne dans l’ovale, comme une photo d’identité.</p>' +
+      (small ? '<div class="crop-warn">⚠️ Cette photo est petite : elle risque d’être floue. Si possible, utilisez la photo d’origine plutôt qu’une capture d’écran.</div>' : '') +
+      '<div class="crop-frame" id="crop-frame"><img id="crop-img" src="'+img.src+'" alt="" /><div class="crop-guide"></div></div>' +
+      '<label style="display:flex;align-items:center;gap:10px;font-size:0.85rem;">Zoom <input id="crop-zoom" type="range" min="1" max="4" step="0.01" value="1" style="flex:1;" /></label>' +
+      '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:12px;"><button type="button" class="btn" data-action="crop-cancel">Annuler</button><button type="button" class="btn btn-primary" data-action="crop-save">Enregistrer la photo</button></div></div>';
+    document.body.appendChild(ov);
+    applyCrop();
+    var frame = document.getElementById('crop-frame'), drag = null;
+    frame.addEventListener('pointerdown', function(e){ drag = {x:e.clientX, y:e.clientY, ox:cropState.x, oy:cropState.y}; frame.setPointerCapture(e.pointerId); });
+    frame.addEventListener('pointermove', function(e){ if(!drag) return; cropState.x = drag.ox + e.clientX - drag.x; cropState.y = drag.oy + e.clientY - drag.y; applyCrop(); });
+    frame.addEventListener('pointerup', function(){ drag = null; });
+    frame.addEventListener('wheel', function(e){ e.preventDefault(); setCropZoom(cropState.zoom * (e.deltaY<0 ? 1.06 : 1/1.06)); }, {passive:false});
+    document.getElementById('crop-zoom').addEventListener('input', function(e){ setCropZoom(parseFloat(e.target.value)); });
+  }
+  function setCropZoom(z){
+    var s = cropState; z = Math.min(4, Math.max(1, z));
+    var cx = s.FW/2, cy = s.FH/2, k = z / s.zoom;
+    s.x = cx - (cx - s.x)*k; s.y = cy - (cy - s.y)*k; s.zoom = z;
+    var r = document.getElementById('crop-zoom'); if(r) r.value = z;
+    applyCrop();
+  }
+  function applyCrop(){
+    var s = cropState, sc = s.base*s.zoom, w = s.img.naturalWidth*sc, h = s.img.naturalHeight*sc;
+    s.x = Math.min(0, Math.max(s.FW - w, s.x)); s.y = Math.min(0, Math.max(s.FH - h, s.y));
+    var im = document.getElementById('crop-img');
+    if(im) im.style.transform = 'translate('+s.x+'px,'+s.y+'px) scale('+sc+')';
+  }
+  function closePhotoCropper(){ var ov = document.getElementById('crop-overlay'); if(ov) ov.remove(); cropState = null; }
+  function savePhotoCrop(){
+    var s = cropState; if(!s) return;
+    var OW = 300, OH = 400, k = OW / s.FW, sc = s.base*s.zoom;
+    var c = document.createElement('canvas'); c.width = OW; c.height = OH;
+    var ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0,0,OW,OH);
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(s.img, s.x*k, s.y*k, s.img.naturalWidth*sc*k, s.img.naturalHeight*sc*k);
+    var dataUrl = c.toDataURL('image/jpeg', 0.82), id = s.id;
+    closePhotoCropper();
+    updateStagiaire(id, function(st){ st.photo = dataUrl; }, 'Photo mise à jour.');
+  }
+  document.addEventListener('click', function(e){
+    var b = e.target.closest && e.target.closest('[data-action="crop-cancel"],[data-action="crop-save"]');
+    if(!b) return;
+    if(b.getAttribute('data-action')==='crop-save') savePhotoCrop(); else closePhotoCropper();
+  });
+
   function handlePhotoFile(file, stagiaireId){
     if(!file) return;
     var reader = new FileReader();
     reader.onload = function(e){
       var img = new Image();
       img.onload = function(){
+        if(window.PointerEvent){ openPhotoCropper(img, stagiaireId); return; }
         var maxDim = 400;
         var scale = Math.min(1, maxDim / Math.max(img.width, img.height));
         var w = Math.max(1, Math.round(img.width * scale));
@@ -3241,7 +3571,7 @@ body.is-offline .offline-banner{ display:block; }
     // On attend que le curseur soit arrivé dans le champ suivant avant d'enregistrer et de redessiner l'écran.
     setTimeout(function(){
       var btn = document.querySelector('[data-action="'+action+'"]');
-      if(btn) btn.click();
+      if(btn){ autosaving = true; try{ btn.click(); } finally { autosaving = false; } }
     }, 0);
   });
 
