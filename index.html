@@ -240,10 +240,10 @@ textarea.is-missing, select.is-missing{ border-color:#C0392B !important; box-sha
 .crop-overlay{ position:fixed; inset:0; background:rgba(10,20,40,.72); z-index:60; display:flex; align-items:center; justify-content:center; padding:16px; }
 .crop-card{ background:var(--surface); border-radius:16px; padding:18px; width:100%; max-width:380px; box-shadow:var(--shadow); }
 .crop-card h3{ margin:0 0 4px; }
-.crop-frame{ position:relative; width:240px; height:320px; margin:12px auto; overflow:hidden; border-radius:10px; background:#ddd; touch-action:none; cursor:grab; }
+.crop-frame{ position:relative; width:280px; height:280px; margin:12px auto; overflow:hidden; border-radius:10px; background:#ddd; touch-action:none; cursor:grab; }
 .crop-frame img{ position:absolute; left:0; top:0; transform-origin:0 0; user-select:none; -webkit-user-drag:none; max-width:none; }
 .crop-guide{ position:absolute; inset:0; pointer-events:none; border:2px solid rgba(255,255,255,.85); border-radius:10px; }
-.crop-guide::after{ content:''; position:absolute; left:22%; right:22%; top:12%; height:56%; border:2px dashed rgba(255,255,255,.75); border-radius:50%; }
+.crop-guide::after{ content:''; position:absolute; left:26%; right:26%; top:10%; height:62%; border:2px dashed rgba(255,255,255,.75); border-radius:50%; }
 .crop-warn{ background:#FDE9D2; color:#7A4508; border-radius:8px; padding:8px 10px; font-size:0.82rem; margin:6px 0; }
 .row-exclu td{ background:#FBE3E1 !important; color:#8E1B12; }
 .pill-exclu{ background:#C0392B; color:#fff; border:none; }
@@ -3450,14 +3450,14 @@ body.is-offline .offline-banner{ display:block; }
   // ---------- recadrage de la photo avant l'enregistrement ----------
   var cropState = null;
   function openPhotoCropper(img, stagiaireId){
-    var FW = 240, FH = 320;
+    var FW = 280, FH = 280;   // cadre carré, comme la photo affichée dans l'appli
     var base = Math.max(FW / img.naturalWidth, FH / img.naturalHeight);
     cropState = { img: img, id: stagiaireId, base: base, zoom: 1, x: (FW - img.naturalWidth*base)/2, y: (FH - img.naturalHeight*base)/2, FW: FW, FH: FH };
-    var small = img.naturalWidth < 300 || img.naturalHeight < 400;
+    var small = Math.min(img.naturalWidth, img.naturalHeight) < 300;
     var ov = document.createElement('div');
     ov.className = 'crop-overlay'; ov.id = 'crop-overlay';
     ov.innerHTML = '<div class="crop-card" role="dialog" aria-label="Cadrer la photo"><h3>Cadrer la photo</h3>' +
-      '<p class="required-note" style="margin:0;">Déplacez la photo avec le doigt ou la souris et zoomez pour que le visage tienne dans l’ovale, comme une photo d’identité.</p>' +
+      '<p class="required-note" style="margin:0;">Déplacez la photo avec le doigt ou la souris et zoomez pour que le visage tienne dans l’ovale.</p>' +
       (small ? '<div class="crop-warn">⚠️ Cette photo est petite : elle risque d’être floue. Si possible, utilisez la photo d’origine plutôt qu’une capture d’écran.</div>' : '') +
       '<div class="crop-frame" id="crop-frame"><img id="crop-img" src="'+img.src+'" alt="" /><div class="crop-guide"></div></div>' +
       '<label style="display:flex;align-items:center;gap:10px;font-size:0.85rem;">Zoom <input id="crop-zoom" type="range" min="1" max="4" step="0.01" value="1" style="flex:1;" /></label>' +
@@ -3487,7 +3487,7 @@ body.is-offline .offline-banner{ display:block; }
   function closePhotoCropper(){ var ov = document.getElementById('crop-overlay'); if(ov) ov.remove(); cropState = null; }
   function savePhotoCrop(){
     var s = cropState; if(!s) return;
-    var OW = 300, OH = 400, k = OW / s.FW, sc = s.base*s.zoom;
+    var OW = 400, OH = 400, k = OW / s.FW, sc = s.base*s.zoom;
     var c = document.createElement('canvas'); c.width = OW; c.height = OH;
     var ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0,0,OW,OH);
     ctx.imageSmoothingQuality = 'high';
