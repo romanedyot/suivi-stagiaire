@@ -903,11 +903,59 @@ body.is-offline .offline-banner{ display:block; }
   }
   function ucLevelLabel(v){ for(var i=0;i<UC_LEVELS.length;i++){ if(UC_LEVELS[i][0]===v) return UC_LEVELS[i][1]; } return 'Non évalué'; }
   function fullName(st){ return st.prenom+' '+st.nom; }
+  // ---------- carte professionnelle et dernier diplôme des tuteurs ----------
+  var DIPLOMES = [
+    ['Judo-jujitsu / arts martiaux', ['BEES 1er degré Judo-Jujitsu','BEES 2e degré Judo-Jujitsu','BEES 3e degré Judo-Jujitsu','BPJEPS Judo-Jujitsu','BPJEPS Activités de judo-jujitsu','DEJEPS Perfectionnement sportif – Judo-Jujitsu','DESJEPS Performance sportive – Judo-Jujitsu','CQP Moniteur d’arts martiaux']],
+    ['Autres diplômes du sport', ['BPJEPS Activités de la forme','BPJEPS Activités physiques pour tous','BPJEPS (autre spécialité)','DEJEPS (autre mention)','DESJEPS Animation socio-éducative ou culturelle – Direction de structure et de projet','DESJEPS (autre mention)','BEES (autre discipline)','CQP (autre)','Professeur de sport']],
+    ['Diplômes universitaires', ['DEUST STAPS','Licence STAPS','Licence professionnelle (sport)','Master STAPS']],
+    ['Autre', ['Autre diplôme','Aucun diplôme professionnel']]
+  ];
+  function diplomeSelect(id, val){
+    var known = DIPLOMES.some(function(g){ return g[1].indexOf(val)!==-1; });
+    return '<select id="'+id+'"><option value="">— Choisir le dernier diplôme obtenu —</option>' +
+      (val && !known ? '<option value="'+esc(val)+'" selected>'+esc(val)+'</option>' : '') +
+      DIPLOMES.map(function(g){ return '<optgroup label="'+esc(g[0])+'">'+g[1].map(function(d){ return '<option value="'+esc(d)+'"'+(d===val?' selected':'')+'>'+esc(d)+'</option>'; }).join('')+'</optgroup>'; }).join('') +
+    '</select>';
+  }
+  var CARTE_PRO_RE = /^(\d{3}|02[AB])\d{2}ED\d{4}$/i;
+  function cartePro(v){ return String(v||'').replace(/\s+/g,'').toUpperCase(); }
+  var QUALIF_KEYS = ['tuteurCartePro','tuteurDiplome','tuteur2CartePro','tuteur2Diplome'];
+  function qualifFields(prefix, v, n){
+    var c = n===2 ? 'tuteur2CartePro' : 'tuteurCartePro', d = n===2 ? 'tuteur2Diplome' : 'tuteurDiplome', lab = n===2 ? ' du deuxième tuteur' : ' du tuteur';
+    return '<div class="field"><label for="'+prefix+c+'">N° de carte professionnelle'+lab+'</label><input id="'+prefix+c+'" type="text" placeholder="ex. 07519ED0123" value="'+esc(v[c]||'')+'" /></div>' +
+      '<div class="field"><label for="'+prefix+d+'">Dernier diplôme obtenu'+lab+'</label>'+diplomeSelect(prefix+d, v[d]||'')+'</div>';
+  }
+  function setTuteurQualif(id, s){
+    return sb.rpc('rpc_set_tuteur_qualif', { p_id: id, p_carte: s.tuteurCartePro||null, p_diplome: s.tuteurDiplome||null, p_carte2: s.tuteur2CartePro||null, p_diplome2: s.tuteur2Diplome||null }).then(function(r){
+      if(r.error){ showToast('La carte pro et le diplôme n’ont pas pu être enregistrés (mise à jour de la base à faire).'); return false; }
+      return true;
+    });
+  }
+  // Lit les cases carte pro / diplôme du formulaire ; renvoie true si quelque chose a changé.
+  function readQualif(target, prefix){
+    var changed = false;
+    QUALIF_KEYS.forEach(function(k){
+      var el = document.getElementById(prefix+k); if(!el) return;
+      var v = /CartePro$/.test(k) ? cartePro(el.value) : el.value;
+      if((target[k]||'') !== v){ target[k] = v; changed = true; }
+    });
+    return changed;
+  }
+  function badCartePro(prefix){
+    return ['tuteurCartePro','tuteur2CartePro'].map(function(k){ var el=document.getElementById(prefix+k); return el ? cartePro(el.value) : ''; })
+      .filter(function(v){ return v && !CARTE_PRO_RE.test(v); });
+  }
+  function tuteursAvecDiplome(st){
+    var out = [];
+    if(st.tuteurNom && st.tuteurNom.trim()) out.push(esc(st.tuteurNom)+(st.tuteurDiplome ? '<br><small style="color:var(--text-muted)">'+esc(st.tuteurDiplome)+'</small>' : ''));
+    if(st.tuteur2Nom && st.tuteur2Nom.trim()) out.push(esc(st.tuteur2Nom)+(st.tuteur2Diplome ? '<br><small style="color:var(--text-muted)">'+esc(st.tuteur2Diplome)+'</small>' : ''));
+    return out.join('<br>') || '—';
+  }
   function tuteursLabel(st){ return [st.tuteurNom, st.tuteur2Nom].filter(function(x){ return x && x.trim(); }).join(' et ') || '—'; }
   // ---------- Supabase : chargement des données ----------
   // Les photos pèsent l'essentiel des données : la liste est chargée sans elles,
   // et la photo d'un stagiaire n'est téléchargée qu'à l'ouverture de sa fiche.
-  var STAGIAIRE_COLS = 'id,prenom,nom,formation,telephone,email,date_naissance,structure_nom,structure_adresse,tuteur_nom,tuteur_telephone,tuteur_email,tuteur2_nom,tuteur2_telephone,tuteur2_email,identifiant_stagiaire,mot_de_passe_defini_stagiaire,planning_structure,planning_dojo,documents,visites,suivis,evaluations,messages';
+  var STAGIAIRE_COLS = 'id,prenom,nom,formation,telephone,email,date_naissance,structure_nom,structure_adresse,tuteur_nom,tuteur_telephone,tuteur_email,tuteur2_nom,tuteur2_telephone,tuteur2_email,tuteur_carte_pro,tuteur_diplome,tuteur2_carte_pro,tuteur2_diplome,identifiant_stagiaire,mot_de_passe_defini_stagiaire,planning_structure,planning_dojo,documents,visites,suivis,evaluations,messages';
   var photoCache = {};
   var photoPending = {};
   function ensurePhoto(id){
@@ -933,6 +981,7 @@ body.is-offline .offline-banner{ display:block; }
       structureNom: row.structure_nom, structureAdresse: row.structure_adresse,
       tuteurNom: row.tuteur_nom, tuteurTelephone: row.tuteur_telephone, tuteurEmail: row.tuteur_email,
       tuteur2Nom: row.tuteur2_nom || '', tuteur2Telephone: row.tuteur2_telephone || '', tuteur2Email: row.tuteur2_email || '',
+      tuteurCartePro: row.tuteur_carte_pro || '', tuteurDiplome: row.tuteur_diplome || '', tuteur2CartePro: row.tuteur2_carte_pro || '', tuteur2Diplome: row.tuteur2_diplome || '',
       identifiantStagiaire: row.identifiant_stagiaire, motDePasseStagiaire: '',
       motDePasseDefiniStagiaire: row.mot_de_passe_defini_stagiaire,
       planningStructure: row.planning_structure || [], planningDojo: row.planning_dojo || [],
@@ -973,6 +1022,11 @@ body.is-offline .offline-banner{ display:block; }
     ]).then(function(results){
       var stagRes = results[0], compRes = results[1], formRes = results[2];
       // Base pas encore mise à jour pour le deuxième tuteur : on recharge sans ces colonnes.
+      // Base pas encore mise à jour pour la carte pro / le diplôme des tuteurs : on recharge sans ces colonnes.
+      if(stagRes.error && /carte_pro|_diplome/.test(stagRes.error.message || '') && STAGIAIRE_COLS.indexOf('tuteur_carte_pro')>=0){
+        STAGIAIRE_COLS = STAGIAIRE_COLS.replace(',tuteur_carte_pro,tuteur_diplome,tuteur2_carte_pro,tuteur2_diplome', '');
+        return loadData();
+      }
       // Base pas encore mise à jour pour la date de naissance : on recharge sans cette colonne.
       if(stagRes.error && /date_naissance/.test(stagRes.error.message || '') && STAGIAIRE_COLS.indexOf('date_naissance')>=0){
         STAGIAIRE_COLS = STAGIAIRE_COLS.replace(',date_naissance', '');
@@ -1945,7 +1999,7 @@ body.is-offline .offline-banner{ display:block; }
       return '<tr class="row-click'+(isExclu(st)?' row-exclu':'')+'" data-action="open-stagiaire" data-id="'+esc(st.id)+'">' +
         '<td><strong>'+esc(fullName(st))+'</strong>'+(isExclu(st) ? ' <span class="pill pill-exclu">Exclu de formation</span>' : '')+(hasUnreadMessages(st) ? ' <span title="Message en attente de réponse">🔔</span>' : '')+'</td>' +
         '<td>'+esc(st.structureNom)+'</td>' +
-        '<td>'+esc(tuteursLabel(st))+'</td>' +
+        '<td>'+tuteursAvecDiplome(st)+'</td>' +
         '<td><span class="pill '+riskClass(risk)+'">'+riskLabel(risk)+'</span></td>' +
         '<td>'+sheetStatusHtml(st)+'</td>' +
         '<td>'+fmtDate(next)+'</td>' +
@@ -2003,7 +2057,8 @@ body.is-offline .offline-banner{ display:block; }
       f('dateNaissance','Date de naissance',v.dateNaissance,'date') + '<div class="field"></div>' +
       f('structureNom','Structure d’accueil',v.structureNom) + f('structureAdresse','Adresse de la structure',v.structureAdresse) +
       f('tuteurNom','Nom du tuteur',v.tuteurNom) + f('tuteurTelephone','Téléphone tuteur',v.tuteurTelephone) +
-      f('tuteurEmail','E-mail tuteur',v.tuteurEmail,'email') +
+      f('tuteurEmail','E-mail tuteur',v.tuteurEmail,'email') + '<div class="field"></div>' +
+      qualifFields(prefix, v, 1) +
     '</div>' +
     (hasTuteur2(v, prefix)
       ? tuteur2Block(prefix, v)
@@ -2027,7 +2082,8 @@ body.is-offline .offline-banner{ display:block; }
       '<p class="hint-banner" style="margin-bottom:10px;">Le deuxième tuteur a accès à la fiche de suivi, comme le premier. Il n’y a qu’une seule feuille de suivi tuteur, partagée entre les deux. Pour retirer ce tuteur, videz ses champs et enregistrez.</p>' +
       '<div class="form-grid">' +
         f('tuteur2Nom','Nom du deuxième tuteur',v.tuteur2Nom) + f('tuteur2Telephone','Téléphone deuxième tuteur',v.tuteur2Telephone) +
-        f('tuteur2Email','E-mail deuxième tuteur',v.tuteur2Email,'email') +
+        f('tuteur2Email','E-mail deuxième tuteur',v.tuteur2Email,'email') + '<div class="field"></div>' +
+        qualifFields(prefix, v, 2) +
       '</div>';
   }
 
@@ -2119,17 +2175,20 @@ body.is-offline .offline-banner{ display:block; }
     ['prenom','Prénom'], ['nom','Nom'], ['telephone','Téléphone'], ['email','E-mail'], ['dateNaissance','Date de naissance'],
     ['structureNom','Structure d’accueil'], ['structureAdresse','Adresse de la structure'],
     ['tuteurNom','Nom du tuteur'], ['tuteurTelephone','Téléphone tuteur'], ['tuteurEmail','E-mail tuteur'],
-    ['tuteur2Nom','Nom du deuxième tuteur (facultatif)'], ['tuteur2Telephone','Téléphone deuxième tuteur'], ['tuteur2Email','E-mail deuxième tuteur']
+    ['tuteurCartePro','N° de carte professionnelle du tuteur'], ['tuteurDiplome','Dernier diplôme obtenu du tuteur'],
+    ['tuteur2Nom','Nom du deuxième tuteur (facultatif)'], ['tuteur2Telephone','Téléphone deuxième tuteur'], ['tuteur2Email','E-mail deuxième tuteur'],
+    ['tuteur2CartePro','N° de carte professionnelle du deuxième tuteur'], ['tuteur2Diplome','Dernier diplôme obtenu du deuxième tuteur']
   ];
-  var STAGIAIRE_EDITABLE_FIELDS = ['prenom','nom','telephone','email','dateNaissance','structureNom','structureAdresse','tuteurNom','tuteurTelephone','tuteurEmail','tuteur2Nom','tuteur2Telephone','tuteur2Email'];
-  var TUTEUR_EDITABLE_FIELDS = ['tuteurNom','tuteurTelephone','tuteurEmail','tuteur2Nom','tuteur2Telephone','tuteur2Email'];
+  var STAGIAIRE_EDITABLE_FIELDS = ['prenom','nom','telephone','email','dateNaissance','structureNom','structureAdresse','tuteurNom','tuteurTelephone','tuteurEmail','tuteurCartePro','tuteurDiplome','tuteur2Nom','tuteur2Telephone','tuteur2Email','tuteur2CartePro','tuteur2Diplome'];
+  var TUTEUR_EDITABLE_FIELDS = ['tuteurNom','tuteurTelephone','tuteurEmail','tuteurCartePro','tuteurDiplome','tuteur2Nom','tuteur2Telephone','tuteur2Email','tuteur2CartePro','tuteur2Diplome'];
 
   function renderSelfInfosForm(st, editableFields, hintText){
     var editableHtml = SELF_INFO_FIELDS.filter(function(fd){ return editableFields.indexOf(fd[0])>=0; })
       .map(function(fd){
         var key=fd[0], label=fd[1];
         var type = (key==='email'||key==='tuteurEmail'||key==='tuteur2Email') ? 'email' : (key==='dateNaissance' ? 'date' : 'text');
-        return '<div class="field"><label for="self-'+key+'">'+label+'</label><input id="self-'+key+'" type="'+type+'" value="'+esc(st[key])+'" /></div>';
+        if(/Diplome$/.test(key)) return '<div class="field"><label for="self-'+key+'">'+label+'</label>'+diplomeSelect('self-'+key, st[key]||'')+'</div>';
+        return '<div class="field"><label for="self-'+key+'">'+label+'</label><input id="self-'+key+'" type="'+type+'" value="'+esc(st[key])+'"'+(/CartePro$/.test(key)?' placeholder="ex. 07519ED0123"':'')+' /></div>';
       }).join('');
     var readonlyDefs = SELF_INFO_FIELDS.filter(function(fd){ return editableFields.indexOf(fd[0])<0; });
     var readonlyHtml = readonlyDefs.length ? '<h4 style="font-size:0.9rem;margin:18px 0 10px;">Autres informations</h4><div class="readonly-grid">' +
@@ -2166,6 +2225,7 @@ body.is-offline .offline-banner{ display:block; }
       roItem('Structure d’accueil', st.structureNom) + roItem('Adresse de la structure', st.structureAdresse) +
       roItem('Tuteur', st.tuteurNom) + roItem('Téléphone tuteur', st.tuteurTelephone) +
       roItem('E-mail tuteur', st.tuteurEmail) +
+      roItem('Carte pro du tuteur', st.tuteurCartePro) + roItem('Dernier diplôme du tuteur', st.tuteurDiplome) +
       (hasTuteur2(st, 'ro-') ? roItem('Deuxième tuteur', st.tuteur2Nom) + roItem('Téléphone deuxième tuteur', st.tuteur2Telephone) + roItem('E-mail deuxième tuteur', st.tuteur2Email) : '') +
     '</div>' +
     '<p class="hint-banner" style="margin-top:18px;">Une information a changé ? Écrivez-le au référent depuis l’onglet Messagerie.</p>';
@@ -3079,6 +3139,7 @@ body.is-offline .offline-banner{ display:block; }
         if(res.error || !res.data){ showToast('Impossible d’ajouter ce stagiaire : '+(res.error?res.error.message:'')); return; }
         nst.id = res.data;
         if(nst.dateNaissance) setDateNaissance(nst.id, nst.dateNaissance);
+        if(readQualif(nst, 'add-')) setTuteurQualif(nst.id, nst);
         nst.motDePasseDefiniStagiaire = !!newPwd;
         if(!newPwd) nst.motDePasseStagiaire = 'Provisoire2026!';
         DATA.stagiaires.push(nst);
@@ -3103,7 +3164,11 @@ body.is-offline .offline-banner{ display:block; }
       var newPwdInfos = getVal('c-motDePasseStagiaire');
       var stDn = findStagiaire(id), oldDn = stDn ? (stDn.dateNaissance||'') : '';
       var badMail = ['c-email','c-tuteurEmail','c-tuteur2Email'].filter(function(f){ var v=getVal(f); return v && !validEmail(v); });
-      updateStagiaire(id, function(s){ readInfosFromForm(s, 'c-'); }, (newPwdInfos || badMail.length) ? null : 'Informations mises à jour.');
+      var qualifChanged = false, qualifSnap = null;
+      var badCarte = badCartePro('c-');
+      updateStagiaire(id, function(s){ readInfosFromForm(s, 'c-'); qualifChanged = readQualif(s, 'c-'); qualifSnap = s; }, (newPwdInfos || badMail.length || badCarte.length) ? null : 'Informations mises à jour.');
+      if(qualifChanged) setTuteurQualif(id, qualifSnap);
+      if(badCarte.length) showToast('Attention : le n° de carte pro « '+badCarte[0]+' » ne semble pas valide (format attendu : 07519ED0123).');
       if(badMail.length) showToast('Attention : une adresse e-mail ne semble pas valide ('+getVal(badMail[0])+'). Vérifiez-la.');
       if(document.getElementById('c-dateNaissance') && getVal('c-dateNaissance')!==oldDn) setDateNaissance(id, getVal('c-dateNaissance'));
       if(newPwdInfos){
@@ -3380,9 +3445,13 @@ body.is-offline .offline-banner{ display:block; }
       if(!selfEditableKeys.length) return;
       var stSelf = findStagiaire(id), oldSelfDn = stSelf ? (stSelf.dateNaissance||'') : '';
       var badSelf = ['self-email','self-tuteurEmail','self-tuteur2Email'].filter(function(f){ var v=document.getElementById(f) ? getVal(f) : ''; return v && !validEmail(v); });
+      var selfQualifChanged = false, selfSnap = null, badCarteSelf = badCartePro('self-');
       updateStagiaire(id, function(s){
-        selfEditableKeys.forEach(function(k){ if(document.getElementById('self-'+k)) s[k] = getVal('self-'+k); });
-      }, badSelf.length ? null : 'Informations mises à jour.');
+        selfEditableKeys.forEach(function(k){ if(QUALIF_KEYS.indexOf(k)===-1 && document.getElementById('self-'+k)) s[k] = getVal('self-'+k); });
+        selfQualifChanged = readQualif(s, 'self-'); selfSnap = s;
+      }, (badSelf.length || badCarteSelf.length) ? null : 'Informations mises à jour.');
+      if(selfQualifChanged) setTuteurQualif(id, selfSnap);
+      if(badCarteSelf.length) showToast('Attention : le n° de carte pro « '+badCarteSelf[0]+' » ne semble pas valide (format attendu : 07519ED0123).');
       if(badSelf.length) showToast('Attention : l’adresse e-mail « '+getVal(badSelf[0])+' » ne semble pas valide. Vérifiez-la.');
       if(document.getElementById('self-dateNaissance') && getVal('self-dateNaissance')!==oldSelfDn) setDateNaissance(id, getVal('self-dateNaissance'));
       return;
