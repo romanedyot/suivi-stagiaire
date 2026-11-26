@@ -244,6 +244,9 @@ textarea.is-missing, select.is-missing{ border-color:#C0392B !important; box-sha
 .crop-frame img{ position:absolute; left:0; top:0; transform-origin:0 0; user-select:none; -webkit-user-drag:none; max-width:none; }
 .crop-guide{ position:absolute; inset:0; pointer-events:none; border:2px solid rgba(255,255,255,.85); border-radius:10px; }
 .crop-warn{ background:#FDE9D2; color:#7A4508; border-radius:8px; padding:8px 10px; font-size:0.82rem; margin:6px 0; }
+.login-help{ margin-top:16px; background:var(--surface); border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:12px; padding:12px 14px; font-size:0.88rem; line-height:1.45; color:var(--text); text-align:left; }
+.login-help ul{ margin:6px 0 6px 18px; padding:0; }
+.login-help li{ margin:2px 0; }
 .row-exclu td{ background:#FBE3E1 !important; color:#8E1B12; }
 .pill-exclu{ background:#C0392B; color:#fff; border:none; }
 .exclu-banner{ background:#C0392B; color:#fff; font-weight:700; padding:10px 14px; border-radius:10px; margin:10px 0 12px; letter-spacing:.02em; }
@@ -1641,6 +1644,15 @@ body.is-offline .offline-banner{ display:block; }
         // « Mot de passe oublié » masqué tant que l'envoi d'e-mail n'est pas installé dans Supabase.
         (ORG.showForgotPassword ? '<p style="text-align:center;margin:14px 0 0;"><a href="#" data-action="forgot-open">Mot de passe oublié ?</a></p>' : '') +
       '</div>' +
+      '<div class="login-help">' +
+        '<strong>Première connexion ?</strong>' +
+        '<ul>' +
+          '<li><strong>Tuteur</strong> : votre identifiant est <strong>votre adresse e-mail</strong>.</li>' +
+          '<li><strong>Stagiaire</strong> : votre identifiant est <strong>prenom.nom</strong> (ex. : jean.dupont, sans accent).</li>' +
+          '<li>Si vous ne vous êtes encore jamais connecté(e), votre mot de passe est <strong>Provisoire2026!</strong></li>' +
+        '</ul>' +
+        'À la première connexion, vous choisirez votre propre mot de passe.' +
+      '</div>' +
       '<p class="hint-banner" style="margin-top:20px;">Vous ne connaissez pas vos identifiants, ou vous avez oublié votre mot de passe ? ' +
         (ORG.contactEmail || ORG.contactTel
           ? 'Contactez votre référent pédagogique'+(ORG.contactNom ? ', '+esc(ORG.contactNom) : '')+' :' +
@@ -2099,7 +2111,11 @@ body.is-offline .offline-banner{ display:block; }
         ? ', avec le mot de passe provisoire <strong>Provisoire2026!</strong> qu’il n’a pas encore changé.'
         : ', avec le même mot de passe que ses autres stagiaires suivis ici (pour des raisons de sécurité, ce mot de passe n’est plus affiché ici une fois défini par le tuteur — utilisez « Mot de passe oublié » sur l’écran de connexion si besoin).';
       return '<p class="hint-banner">Ce tuteur a déjà un accès (identifiant : <strong>'+esc(compte.email)+'</strong>). Ce stagiaire apparaîtra automatiquement dans son espace, sous un nouvel onglet à son nom'+pwdNote+' Pour retirer son accès à ce stagiaire, videz ce champ e-mail et enregistrez ; si c’était son dernier stagiaire suivi, son compte sera automatiquement supprimé.</p>' +
-        (compte.motDePasseDefini===false ? '' : '<button type="button" class="btn btn-sm" data-action="reset-compte-pwd" data-compte="'+esc(compte.id)+'" data-nom="'+esc(compte.nomAffiche||compte.email)+'" style="margin:-4px 0 10px;">Réinitialiser son mot de passe (Provisoire2026!)</button>') +
+        (view.role==='referent'
+          ? '<div class="field" style="margin:-4px 0 10px;"><label for="tpwd-'+esc(compte.id)+'">Nouveau mot de passe du tuteur (réservé à la référente)</label>' +
+              '<div style="display:flex;gap:8px;flex-wrap:wrap;"><input id="tpwd-'+esc(compte.id)+'" type="text" autocomplete="off" placeholder="ex. 12345678" style="flex:1;min-width:160px;" />' +
+              '<button type="button" class="btn btn-sm" data-action="set-tuteur-pwd" data-compte="'+esc(compte.id)+'" data-nom="'+esc(compte.nomAffiche||compte.email)+'">Réinitialiser le mot de passe</button></div></div>'
+          : '') +
         (compte.motDePasseDefini===false ? mailtoInviteHtml(compte.email, compte.nomAffiche, compte.email, 'Provisoire2026!', 'tuteur') : '');
     }
     return '<p class="hint-banner">Nouvel accès tuteur : à l’enregistrement, un compte sera créé pour <strong>'+esc(email)+'</strong>, avec le mot de passe provisoire <strong>Provisoire2026!</strong> ; le tuteur se connectera avec cette adresse e-mail et choisira un nouveau mot de passe à sa première connexion.</p>';
@@ -2948,6 +2964,18 @@ body.is-offline .offline-banner{ display:block; }
       });
       return;
     }
+    if(action==='set-tuteur-pwd'){
+      if(view.role!=='referent') return;
+      var tpId = el.getAttribute('data-compte'), tpNom = el.getAttribute('data-nom') || 'ce tuteur';
+      var tpPwd = (getVal('tpwd-'+tpId) || '').trim();
+      if(tpPwd.length < 8){ showToast('Le mot de passe doit contenir au moins 8 caractères.'); return; }
+      sb.rpc('rpc_set_password', { p_kind: 'compte', p_id: tpId, p_new_password: tpPwd }).then(function(res){
+        if(res.error || res.data!==true){ showToast('Réinitialisation impossible : '+(res.error ? res.error.message : 'compte introuvable.')); return; }
+        var f = document.getElementById('tpwd-'+tpId); if(f) f.value = '';
+        showToast('Mot de passe de '+tpNom+' réinitialisé : '+tpPwd);
+      });
+      return;
+    }
     if(action==='reset-compte-pwd'){
       var rcId = el.getAttribute('data-compte'), rcNom = el.getAttribute('data-nom') || 'ce tuteur';
       if(!window.confirm('Réinitialiser le mot de passe de '+rcNom+' ?\n\nIl pourra se connecter avec le mot de passe provisoire Provisoire2026! et devra en choisir un nouveau à la connexion.')) return;
@@ -3528,8 +3556,6 @@ body.is-offline .offline-banner{ display:block; }
         'Nom': (s.nom||'').toUpperCase(), 'Prénom': s.prenom, 'Adresse mail stagiaire': s.email, 'Téléphone stagiaire': s.telephone,
         'Nom du tuteur': s.tuteurNom, 'Téléphone du tuteur': s.tuteurTelephone, 'Adresse mail du tuteur': s.tuteurEmail,
         'Carte pro du tuteur': s.tuteurCartePro, 'Dernier diplôme du tuteur': s.tuteurDiplome,
-        'Nom du 2e tuteur': s.tuteur2Nom, 'Téléphone du 2e tuteur': s.tuteur2Telephone, 'Adresse mail du 2e tuteur': s.tuteur2Email,
-        'Carte pro du 2e tuteur': s.tuteur2CartePro, 'Dernier diplôme du 2e tuteur': s.tuteur2Diplome,
         'Structure d’accueil': s.structureNom, 'Adresse de la structure': s.structureAdresse,
         'Date de naissance': dfr(s.dateNaissance), 'Formation': s.formation
       }; });
